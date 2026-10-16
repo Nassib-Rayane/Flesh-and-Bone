@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "fleshbone:empty_syringe",
+    "minecraft:glow_berries",
+    "minecraft:redstone"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:antiarrhythmic"
+  }
+}

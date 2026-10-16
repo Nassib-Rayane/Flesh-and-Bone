@@ -1,0 +1,13 @@
+{
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 8
+  },
+  "gives": {
+    "id": "fleshbone:morphine",
+    "count": 1
+  },
+  "max_uses": 6.0,
+  "reputation_discount": 0.05,
+  "xp": 15.0
+}

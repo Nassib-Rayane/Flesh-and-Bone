@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:glass_bottle",
+    "minecraft:oxeye_daisy",
+    "minecraft:sugar",
+    "minecraft:paper"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:painkillers"
+  }
+}

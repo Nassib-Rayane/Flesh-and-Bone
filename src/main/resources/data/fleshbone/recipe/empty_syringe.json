@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:glass_pane",
+    "minecraft:iron_nugget"
+  ],
+  "result": {
+    "count": 2,
+    "id": "fleshbone:empty_syringe"
+  }
+}

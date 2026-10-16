@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:cleric/3/sterile_bandage",
+    "fleshbone:cleric/3/suture_kit",
+    "fleshbone:cleric/3/tourniquet"
+  ]
+}

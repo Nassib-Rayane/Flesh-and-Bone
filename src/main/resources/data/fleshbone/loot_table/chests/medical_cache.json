@@ -1,0 +1,139 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:bandage",
+          "weight": 15
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:sterile_bandage",
+          "weight": 15
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:antiseptic",
+          "weight": 12
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:suture_kit",
+          "weight": 10
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:tweezers",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:morphine",
+          "weight": 8,
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "add": false,
+              "count": {
+                "type": "minecraft:uniform",
+                "min": 1.0,
+                "max": 2.0
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:painkillers",
+          "weight": 10
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:tourniquet",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:splint",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:antibiotics",
+          "weight": 10
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:bone_saw",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:epinephrine",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:naloxone",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:procoagulant",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:saline_bag",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:chest_drain",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:empty_blood_bag",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:blood_bag",
+          "weight": 3,
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "fleshbone:blood_type": "O_NEG"
+              }
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:defibrillator",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:vitals_monitor",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 10
+        }
+      ],
+      "rolls": {
+        "type": "minecraft:uniform",
+        "min": 2.0,
+        "max": 4.0
+      }
+    }
+  ],
+  "random_sequence": "fleshbone:chests/medical_cache"
+}

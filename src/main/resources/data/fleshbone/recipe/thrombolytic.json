@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "fleshbone:empty_syringe",
+    "minecraft:fermented_spider_eye"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:thrombolytic"
+  }
+}

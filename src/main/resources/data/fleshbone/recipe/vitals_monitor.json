@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "G": "minecraft:glass_pane",
+    "R": "minecraft:redstone",
+    "C": "minecraft:clock",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "GGG",
+    "RCR",
+    "III"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:vitals_monitor"
+  }
+}

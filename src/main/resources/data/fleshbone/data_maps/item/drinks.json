@@ -1,0 +1,58 @@
+{
+  "values": {
+    "minecraft:potion": {
+      "thirst": 30,
+      "sickness": 12,
+      "sickness_chance": 0.25
+    },
+    "minecraft:milk_bucket": {
+      "thirst": 25
+    },
+    "minecraft:honey_bottle": {
+      "thirst": 10
+    },
+    "minecraft:mushroom_stew": {
+      "thirst": 15,
+      "warmth": 0.3
+    },
+    "minecraft:beetroot_soup": {
+      "thirst": 15,
+      "warmth": 0.3
+    },
+    "minecraft:rabbit_stew": {
+      "thirst": 15,
+      "warmth": 0.3
+    },
+    "minecraft:suspicious_stew": {
+      "thirst": 15,
+      "warmth": 0.2
+    },
+    "minecraft:melon_slice": {
+      "thirst": 6,
+      "warmth": -0.1
+    },
+    "minecraft:apple": {
+      "thirst": 4
+    },
+    "minecraft:sweet_berries": {
+      "thirst": 2
+    },
+    "minecraft:glow_berries": {
+      "thirst": 2
+    },
+    "minecraft:golden_apple": {
+      "thirst": 6
+    },
+    "minecraft:chorus_fruit": {
+      "thirst": 3
+    },
+    "fleshbone:purified_water": {
+      "thirst": 35
+    },
+    "fleshbone:coffee": {
+      "thirst": 15,
+      "warmth": 0.3,
+      "caffeine": 40
+    }
+  }
+}

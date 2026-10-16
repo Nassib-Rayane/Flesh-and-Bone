@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:glass_bottle",
+    "minecraft:bread",
+    "minecraft:brown_mushroom",
+    "minecraft:paper"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:antibiotics"
+  }
+}

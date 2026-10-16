@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:iron_golem",
+    "minecraft:ravager",
+    "minecraft:warden",
+    "minecraft:hoglin",
+    "minecraft:zoglin",
+    "minecraft:goat",
+    "minecraft:ender_dragon",
+    "minecraft:creaking",
+    "minecraft:camel_husk"
+  ]
+}

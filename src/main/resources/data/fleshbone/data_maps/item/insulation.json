@@ -1,0 +1,97 @@
+{
+  "values": {
+    "minecraft:leather_helmet": {
+      "value": 0.1
+    },
+    "minecraft:leather_chestplate": {
+      "value": 0.3
+    },
+    "minecraft:leather_leggings": {
+      "value": 0.2
+    },
+    "minecraft:leather_boots": {
+      "value": 0.1
+    },
+    "minecraft:turtle_helmet": {
+      "value": 0.05
+    },
+    "minecraft:carved_pumpkin": {
+      "value": 0.05
+    },
+    "minecraft:elytra": {
+      "value": 0.05
+    },
+    "minecraft:chainmail_helmet": {
+      "value": 0.03
+    },
+    "minecraft:chainmail_chestplate": {
+      "value": 0.03
+    },
+    "minecraft:chainmail_leggings": {
+      "value": 0.03
+    },
+    "minecraft:chainmail_boots": {
+      "value": 0.03
+    },
+    "minecraft:iron_helmet": {
+      "value": 0.04
+    },
+    "minecraft:iron_chestplate": {
+      "value": 0.04
+    },
+    "minecraft:iron_leggings": {
+      "value": 0.04
+    },
+    "minecraft:iron_boots": {
+      "value": 0.04
+    },
+    "minecraft:golden_helmet": {
+      "value": 0.03
+    },
+    "minecraft:golden_chestplate": {
+      "value": 0.03
+    },
+    "minecraft:golden_leggings": {
+      "value": 0.03
+    },
+    "minecraft:golden_boots": {
+      "value": 0.03
+    },
+    "minecraft:diamond_helmet": {
+      "value": 0.05
+    },
+    "minecraft:diamond_chestplate": {
+      "value": 0.05
+    },
+    "minecraft:diamond_leggings": {
+      "value": 0.05
+    },
+    "minecraft:diamond_boots": {
+      "value": 0.05
+    },
+    "minecraft:netherite_helmet": {
+      "value": 0.06
+    },
+    "minecraft:netherite_chestplate": {
+      "value": 0.06
+    },
+    "minecraft:netherite_leggings": {
+      "value": 0.06
+    },
+    "minecraft:netherite_boots": {
+      "value": 0.06
+    },
+    "minecraft:copper_helmet": {
+      "value": 0.04
+    },
+    "minecraft:copper_chestplate": {
+      "value": 0.04
+    },
+    "minecraft:copper_leggings": {
+      "value": 0.04
+    },
+    "minecraft:copper_boots": {
+      "value": 0.04
+    }
+  }
+}

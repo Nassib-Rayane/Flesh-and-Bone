@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "L": "minecraft:leather",
+    "I": "minecraft:iron_nugget",
+    "S": "minecraft:string"
+  },
+  "pattern": [
+    " S ",
+    "LIL",
+    " L "
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:canteen"
+  }
+}

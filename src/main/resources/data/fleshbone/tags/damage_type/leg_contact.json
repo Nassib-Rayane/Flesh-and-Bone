@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:cactus",
+    "minecraft:sweet_berry_bush",
+    "minecraft:hot_floor",
+    "minecraft:campfire",
+    "minecraft:in_fire",
+    "minecraft:stalagmite"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "fleshbone:rag",
+    "fleshbone:rag",
+    "fleshbone:rag",
+    "minecraft:string"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:bandage"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:thrown",
+    "minecraft:wind_charge",
+    "minecraft:spit",
+    "minecraft:generic",
+    "minecraft:fly_into_wall",
+    "minecraft:mace_smash"
+  ]
+}

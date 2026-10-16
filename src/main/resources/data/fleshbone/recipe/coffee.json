@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "neoforge:ingredient_type": "neoforge:components",
+      "items": "minecraft:potion",
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:water"
+        }
+      }
+    },
+    "minecraft:cocoa_beans",
+    "minecraft:cocoa_beans",
+    "minecraft:sugar"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:coffee"
+  }
+}

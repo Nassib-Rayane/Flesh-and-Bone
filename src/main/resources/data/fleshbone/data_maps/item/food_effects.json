@@ -1,0 +1,102 @@
+{
+  "values": {
+    "minecraft:rotten_flesh": {
+      "sickness": 35,
+      "sickness_chance": 0.8,
+      "mood": -5,
+      "thirst": -2
+    },
+    "minecraft:spider_eye": {
+      "sickness": 25,
+      "mood": -4
+    },
+    "minecraft:poisonous_potato": {
+      "sickness": 30,
+      "sickness_chance": 0.6,
+      "mood": -2
+    },
+    "minecraft:chicken": {
+      "sickness": 25,
+      "sickness_chance": 0.3
+    },
+    "minecraft:pufferfish": {
+      "sickness": 50,
+      "mood": -6
+    },
+    "minecraft:chorus_fruit": {
+      "sickness": 10,
+      "sickness_chance": 0.5
+    },
+    "minecraft:milk_bucket": {
+      "sickness": -20
+    },
+    "minecraft:bread": {
+      "thirst": -3
+    },
+    "minecraft:cookie": {
+      "mood": 4,
+      "thirst": -2
+    },
+    "minecraft:dried_kelp": {
+      "thirst": -3
+    },
+    "minecraft:cake": {
+      "mood": 12
+    },
+    "minecraft:pumpkin_pie": {
+      "mood": 8
+    },
+    "minecraft:golden_carrot": {
+      "mood": 5
+    },
+    "minecraft:golden_apple": {
+      "mood": 8
+    },
+    "minecraft:enchanted_golden_apple": {
+      "mood": 15,
+      "sickness": -30
+    },
+    "minecraft:baked_potato": {
+      "mood": 2
+    },
+    "minecraft:mushroom_stew": {
+      "mood": 5
+    },
+    "minecraft:beetroot_soup": {
+      "mood": 5
+    },
+    "minecraft:rabbit_stew": {
+      "mood": 6
+    },
+    "minecraft:honey_bottle": {
+      "mood": 4,
+      "sickness": -10
+    },
+    "minecraft:cooked_beef": {
+      "mood": 3
+    },
+    "minecraft:cooked_porkchop": {
+      "mood": 3
+    },
+    "minecraft:cooked_mutton": {
+      "mood": 3
+    },
+    "minecraft:cooked_chicken": {
+      "mood": 3
+    },
+    "minecraft:cooked_rabbit": {
+      "mood": 3
+    },
+    "minecraft:cooked_cod": {
+      "mood": 2,
+      "thirst": -1
+    },
+    "minecraft:cooked_salmon": {
+      "mood": 2,
+      "thirst": -1
+    },
+    "fleshbone:coffee": {
+      "mood": 3
+    }
+  }
+}

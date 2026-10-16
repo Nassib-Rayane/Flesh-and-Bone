@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "fleshbone:empty_blood_bag",
+    {
+      "neoforge:ingredient_type": "neoforge:components",
+      "items": "minecraft:potion",
+      "components": {
+        "minecraft:potion_contents": {
+          "potion": "minecraft:water"
+        }
+      }
+    },
+    "minecraft:dried_kelp"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:saline_bag"
+  }
+}

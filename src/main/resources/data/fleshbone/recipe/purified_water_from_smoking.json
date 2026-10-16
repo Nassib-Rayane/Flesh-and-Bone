@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:smoking",
+  "category": "food",
+  "cookingtime": 100,
+  "experience": 0.1,
+  "ingredient": {
+    "neoforge:ingredient_type": "neoforge:components",
+    "items": "minecraft:potion",
+    "components": {
+      "minecraft:potion_contents": {
+        "potion": "minecraft:water"
+      }
+    }
+  },
+  "result": {
+    "id": "fleshbone:purified_water"
+  }
+}

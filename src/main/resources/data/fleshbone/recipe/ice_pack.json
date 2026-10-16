@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:leather",
+    [
+      "minecraft:ice",
+      "minecraft:packed_ice",
+      "minecraft:snow_block"
+    ]
+  ],
+  "result": {
+    "count": 2,
+    "id": "fleshbone:ice_pack"
+  }
+}

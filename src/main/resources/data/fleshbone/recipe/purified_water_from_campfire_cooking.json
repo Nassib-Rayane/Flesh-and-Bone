@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "cookingtime": 400,
+  "experience": 0.1,
+  "ingredient": {
+    "neoforge:ingredient_type": "neoforge:components",
+    "items": "minecraft:potion",
+    "components": {
+      "minecraft:potion_contents": {
+        "potion": "minecraft:water"
+      }
+    }
+  },
+  "result": {
+    "id": "fleshbone:purified_water"
+  }
+}

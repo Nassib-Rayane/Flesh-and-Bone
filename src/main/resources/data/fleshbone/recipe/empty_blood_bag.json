@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:dried_kelp",
+    "minecraft:dried_kelp",
+    "minecraft:string"
+  ],
+  "result": {
+    "count": 1,
+    "id": "fleshbone:empty_blood_bag"
+  }
+}

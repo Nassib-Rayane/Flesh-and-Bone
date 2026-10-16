@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:arrow",
+    "minecraft:trident",
+    "minecraft:spear",
+    "minecraft:stalagmite",
+    "minecraft:sting",
+    "minecraft:mob_projectile"
+  ]
+}

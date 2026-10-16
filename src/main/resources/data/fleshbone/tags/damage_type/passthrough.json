@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:hemorrhage",
+    "fleshbone:cardiac_arrest",
+    "fleshbone:asphyxia",
+    "fleshbone:brain_trauma",
+    "fleshbone:sepsis",
+    "fleshbone:hypothermia",
+    "fleshbone:heatstroke",
+    "fleshbone:dehydration",
+    "fleshbone:starvation",
+    "fleshbone:overdose"
+  ]
+}

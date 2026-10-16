@@ -1,0 +1,73 @@
+{
+  "values": {
+    "minecraft:fire": {
+      "heat": 15
+    },
+    "minecraft:soul_fire": {
+      "heat": 10
+    },
+    "minecraft:campfire": {
+      "heat": 18
+    },
+    "minecraft:soul_campfire": {
+      "heat": 12
+    },
+    "minecraft:lava": {
+      "heat": 25
+    },
+    "minecraft:magma_block": {
+      "heat": 8
+    },
+    "minecraft:furnace": {
+      "heat": 8
+    },
+    "minecraft:blast_furnace": {
+      "heat": 9
+    },
+    "minecraft:smoker": {
+      "heat": 8
+    },
+    "minecraft:torch": {
+      "heat": 2
+    },
+    "minecraft:wall_torch": {
+      "heat": 2
+    },
+    "minecraft:soul_torch": {
+      "heat": 1
+    },
+    "minecraft:soul_wall_torch": {
+      "heat": 1
+    },
+    "minecraft:lantern": {
+      "heat": 3
+    },
+    "minecraft:soul_lantern": {
+      "heat": 2
+    },
+    "minecraft:jack_o_lantern": {
+      "heat": 2
+    },
+    "minecraft:glowstone": {
+      "heat": 1
+    },
+    "minecraft:shroomlight": {
+      "heat": 1
+    },
+    "minecraft:ice": {
+      "heat": -3
+    },
+    "minecraft:packed_ice": {
+      "heat": -4
+    },
+    "minecraft:blue_ice": {
+      "heat": -6
+    },
+    "minecraft:snow_block": {
+      "heat": -2
+    },
+    "minecraft:powder_snow": {
+      "heat": -4
+    }
+  }
+}
