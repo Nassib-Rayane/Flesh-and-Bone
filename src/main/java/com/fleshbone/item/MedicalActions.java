@@ -193,6 +193,10 @@ public final class MedicalActions {
         return injection(Treatments::injectNaloxone);
     }
 
+    public static MedicalAction antivenom() {
+        return injection(Treatments::injectAntivenom);
+    }
+
     public static MedicalAction procoagulant() {
         return injection(Treatments::injectProcoagulant);
     }

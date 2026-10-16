@@ -3,10 +3,16 @@ package com.fleshbone.sim.system;
 import com.fleshbone.sim.Body;
 import com.fleshbone.sim.BodyPart;
 import com.fleshbone.sim.Environment;
+import com.fleshbone.sim.Needs;
 import com.fleshbone.sim.PartState;
+import com.fleshbone.sim.SimSettings;
 import com.fleshbone.sim.Vitals;
 
-/** External and internal bleeding, clotting, hemothorax and blood regeneration. Rates are in litres per minute. */
+/**
+ * External and internal bleeding, clotting, hemothorax and blood regeneration. Rates are in litres per minute.
+ * Pressure drives the flow (a stopped heart barely bleeds), viscosity the flow and the clotting. New blood is made from
+ * food: it costs hunger and stops when starving.
+ */
 public final class BleedingSystem {
     /** External: bleed 100 = 1.8 L/min. */
     public static final float LPM_PER_BLEED = 0.018f;
@@ -18,10 +24,10 @@ public final class BleedingSystem {
     public static final float HEAVY_BLEEDING_LPM = 0.225f;
     public static final float CATASTROPHIC_BLEEDING_LPM = 0.45f;
     public static final float INTERNAL_BLEEDING_LPM = 0.04275f;
-    /** Regeneration at a full food bar, scaled down with hunger. */
+    /** Regeneration when fed, slowed below 40 hunger, none when starving. */
     public static final float BLOOD_REGEN_LPM = 0.0525f;
-    /** Vanilla food exhaustion per litre regenerated (4 exhaustion = 1 food point). */
-    public static final float EXHAUSTION_PER_LITRE = 16f;
+    /** Hunger spent per litre of blood made. */
+    public static final float HUNGER_PER_LITRE = 24f;
 
     private BleedingSystem() {}
 
@@ -67,8 +73,15 @@ public final class BleedingSystem {
         return m * (1f + body.chem.procoagulant / 40f);
     }
 
-    public static void tick(Body body, Environment env, float dt) {
+    /** How much of the blood regeneration speed food allows. */
+    public static float nutrition(Needs needs) {
+        if (needs.hunger >= 40f) return 1f;
+        return needs.hunger > 0f ? needs.hunger / 40f : 0f;
+    }
+
+    public static void tick(Body body, Environment env, SimSettings settings, float dt) {
         Vitals v = body.vitals;
+        Needs n = body.needs;
         float clot = clotMultiplier(body);
         float lostLitres = 0f;
         for (BodyPart part : BodyPart.VALUES) {
@@ -113,10 +126,11 @@ public final class BleedingSystem {
         v.bloodVolume = Math.max(0f, v.bloodVolume - lostLitres);
         if (v.bloodVolume < Vitals.NORMAL_BLOOD_VOLUME) {
             if (!v.cardiacArrest) {
-                float regen = BLOOD_REGEN_LPM / 60f * (env.foodLevel / 20f) * dt;
-                regen = Math.min(regen, Vitals.NORMAL_BLOOD_VOLUME - v.bloodVolume);
+                float speed = settings.hunger() ? nutrition(n) : 1f;
+                if (n.thirst <= 0f) speed *= 0.5f;
+                float regen = Math.min(BLOOD_REGEN_LPM / 60f * speed * dt, Vitals.NORMAL_BLOOD_VOLUME - v.bloodVolume);
                 v.bloodVolume += regen;
-                body.exhaustionDebt += regen * EXHAUSTION_PER_LITRE;
+                if (settings.hunger()) n.hunger -= regen * HUNGER_PER_LITRE;
             }
         } else if (v.bloodVolume > Vitals.NORMAL_BLOOD_VOLUME) {
             v.bloodVolume = Math.max(Vitals.NORMAL_BLOOD_VOLUME, v.bloodVolume - 0.03f / 60f * dt);

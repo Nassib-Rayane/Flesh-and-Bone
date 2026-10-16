@@ -1,16 +1,19 @@
 package com.fleshbone.event;
 
 import com.fleshbone.attach.BodyRuntime;
+import com.fleshbone.config.FBConfig;
 import com.fleshbone.config.FBSettings;
 import com.fleshbone.data.FBDataMaps;
+import com.fleshbone.data.ItemWeights;
 import com.fleshbone.sim.Environment;
+import com.fleshbone.sim.system.SleepSystem;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
@@ -28,8 +31,6 @@ public final class EnvironmentSampler {
 
     public static Environment sample(ServerPlayer player, BodyRuntime runtime, Environment env) {
         env.dt = 0.05f * FBSettings.simulationSpeed();
-        env.foodLevel = player.getFoodData().getFoodLevel();
-        env.saturation = player.getFoodData().getSaturationLevel();
         env.sprinting = player.isSprinting();
         env.swimming = player.isSwimming();
         env.underwater = player.isUnderWater();
@@ -40,6 +41,7 @@ public final class EnvironmentSampler {
         env.crouching = player.isCrouching();
         env.breathingBlocked = player.getAirSupply() <= 0 || runtime.suffocationTicks > 0;
         if (runtime.suffocationTicks > 0) runtime.suffocationTicks--;
+        env.exercise = runtime.exercise;
 
         double x = player.getX();
         double z = player.getZ();
@@ -59,12 +61,14 @@ public final class EnvironmentSampler {
             sampleSlow(player, runtime);
         }
         env.ambientTemp = runtime.ambientTemp;
-        env.heatSource = runtime.heatSource;
+        env.heatTarget = runtime.heatTarget;
+        env.heatStrength = runtime.heatStrength;
         env.insulation = runtime.insulation;
         env.light = runtime.light;
         env.skyVisible = runtime.skyVisible;
         env.comfort = runtime.comfort;
-        env.armorWeight = runtime.armorWeight;
+        env.load = runtime.load;
+        env.sleepQuality = player.isSleeping() ? SleepSystem.GOOD : runtime.sleepQuality;
         return env;
     }
 
@@ -74,7 +78,7 @@ public final class EnvironmentSampler {
         runtime.skyVisible = level.canSeeSky(pos.above());
         runtime.light = level.getMaxLocalRawBrightness(pos.above());
         runtime.ambientTemp = airTemperature(level, pos, runtime.skyVisible);
-        runtime.heatSource = heatAround(level, pos);
+        heatAround(level, pos, runtime);
         float insulation = 0f;
         for (EquipmentSlot slot : ARMOR) {
             ItemStack stack = player.getItemBySlot(slot);
@@ -83,11 +87,11 @@ public final class EnvironmentSampler {
             if (value != null) insulation += value.value();
         }
         runtime.insulation = Math.min(0.9f, insulation);
-        var armor = player.getAttribute(Attributes.ARMOR);
-        runtime.armorWeight = armor == null ? 0f : (float) Math.min(1.0, armor.getValue() / 30.0);
+        runtime.load = FBConfig.ENCUMBRANCE.get() ? ItemWeights.carried(player) : 0f;
         boolean pet = !level.getEntitiesOfClass(TamableAnimal.class, new AABB(pos).inflate(8),
                 animal -> animal.isOwnedBy(player)).isEmpty();
-        runtime.comfort = pet || runtime.heatSource >= 6f;
+        runtime.comfort = pet || (runtime.heatStrength > 0.25f && runtime.heatTarget > 30f);
+        runtime.sleepQuality = sleepQuality(player, runtime);
     }
 
     /**
@@ -112,9 +116,13 @@ public final class EnvironmentSampler {
         return celsius;
     }
 
-    /** Heat radiated by nearby blocks (fires, lava, furnaces...) minus the chill of ice, fading with distance. */
-    public static float heatAround(ServerLevel level, BlockPos center) {
-        float heat = 0f;
+    /**
+     * Heat (or cold) radiated by nearby blocks: each source pulls the felt temperature toward its own, with a strength
+     * that fades with distance (×0.5 two blocks away, ×0.2 at four). Strengths add up to at most 0.9.
+     */
+    public static void heatAround(ServerLevel level, BlockPos center, BodyRuntime runtime) {
+        float weight = 0f;
+        float weighted = 0f;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int dx = -HEAT_RADIUS; dx <= HEAT_RADIUS; dx++) {
             for (int dy = -2; dy <= 3; dy++) {
@@ -125,11 +133,41 @@ public final class EnvironmentSampler {
                     FBDataMaps.HeatSource source = state.getData(FBDataMaps.HEAT_SOURCES);
                     if (source == null) continue;
                     if (state.hasProperty(BlockStateProperties.LIT) && !state.getValue(BlockStateProperties.LIT)) continue;
-                    float distance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    heat += source.heat() / (1f + distance);
+                    float distance2 = dx * dx + dy * dy + dz * dz;
+                    float w = source.strength() / (1f + distance2 / 4f);
+                    weight += w;
+                    weighted += w * source.temperature();
                 }
             }
         }
-        return Math.max(-15f, Math.min(30f, heat));
+        runtime.heatStrength = Math.min(0.9f, weight);
+        runtime.heatTarget = weight > 0f ? weighted / weight : runtime.ambientTemp;
+    }
+
+    /**
+     * How well the player would sleep on the ground here: 3 on grass, moss, wool, hay or leaves, 2 on dirt, sand or
+     * wood, 1 on stone; one less in the rain, in the cold or soaked; 0 in water or mid-air.
+     */
+    static int sleepQuality(ServerPlayer player, BodyRuntime runtime) {
+        if (player.isInWater() || !player.onGround()) return 0;
+        ServerLevel level = player.level();
+        BlockPos below = player.blockPosition().below();
+        BlockState ground = level.getBlockState(below);
+        BlockState at = level.getBlockState(player.blockPosition());
+        int quality;
+        if (ground.is(BlockTags.WOOL) || ground.is(BlockTags.WOOL_CARPETS) || at.is(BlockTags.WOOL_CARPETS)
+                || ground.is(net.minecraft.world.level.block.Blocks.HAY_BLOCK) || ground.is(BlockTags.LEAVES)
+                || ground.is(net.minecraft.world.level.block.Blocks.MOSS_BLOCK) || ground.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)) {
+            quality = SleepSystem.OKAY;
+        } else if (ground.is(BlockTags.DIRT) || ground.is(BlockTags.SAND) || ground.is(BlockTags.PLANKS) || ground.is(BlockTags.LOGS)
+                || ground.is(BlockTags.SNOW)) {
+            quality = SleepSystem.MEDIOCRE;
+        } else {
+            quality = SleepSystem.BAD;
+        }
+        if (level.isRainingAt(player.blockPosition().above())) quality--;
+        float felt = runtime.ambientTemp + (runtime.heatTarget - runtime.ambientTemp) * runtime.heatStrength;
+        if (felt < 5f || felt > 35f) quality--;
+        return Math.max(SleepSystem.BAD, quality);
     }
 }

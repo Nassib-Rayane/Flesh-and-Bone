@@ -8,10 +8,13 @@ import com.fleshbone.sim.BodyEvent;
 import com.fleshbone.sim.BodyPart;
 import com.fleshbone.sim.PartState;
 import com.fleshbone.sim.BloodType;
+import com.fleshbone.sim.Needs;
 import com.fleshbone.sim.Vitals;
 import com.fleshbone.sim.system.CirculationSystem;
+import com.fleshbone.sim.system.HungerSystem;
 import com.fleshbone.sim.system.InfectionSystem;
 import com.fleshbone.sim.system.PainSystem;
+import com.fleshbone.sim.system.SicknessSystem;
 
 /** What each medical action does to the body. Pure functions; {@code quality} (0–1) comes from minigames. */
 public final class Treatments {
@@ -181,12 +184,15 @@ public final class Treatments {
         body.derived.compute(body);
     }
 
-    /** Opioid dose: strong pain relief, builds tolerance and dependence, too much stops breathing. */
+    /** Opioid dose: strong pain relief while the tolerance catches up; too much stops breathing. */
     public static void injectOpiate(Body body, float dose) {
         body.chem.opiate = Math.min(150f, body.chem.opiate + dose);
-        body.chem.opiateTolerance = Math.min(100f, body.chem.opiateTolerance + dose * 0.12f);
-        body.chem.opiateDependence = Math.min(100f, body.chem.opiateDependence + dose * 0.2f);
         body.derived.compute(body);
+    }
+
+    /** Neutralizes venom over the next minutes. */
+    public static void injectAntivenom(Body body) {
+        body.chem.antivenom = 100f;
     }
 
     public static void takeAntibiotics(Body body, float dose) {
@@ -198,8 +204,9 @@ public final class Treatments {
     public enum ShockResult { RESTARTED, RHYTHM_RESTORED, NO_EFFECT, INDUCED_FIBRILLATION }
 
     /**
-     * Defibrillator shock. Restores a fibrillating heart most of the time; restarting a stopped heart gets harder every
-     * second of arrest (epinephrine and CPR help). Shocking a healthy heart can throw it into fibrillation.
+     * Defibrillator shock. Restores a fibrillating heart most of the time. A stopped heart restarts one time in five
+     * (Casualties: Unknown), less as the arrest drags on; epinephrine doubles the odds, CPR helps. Shocking a healthy
+     * heart can throw it into fibrillation.
      */
     public static ShockResult defibrillate(Body body, float quality, RandomGenerator rng) {
         Vitals v = body.vitals;
@@ -209,9 +216,9 @@ public final class Treatments {
         float q = clamp01(quality);
         ShockResult result;
         if (v.cardiacArrest) {
-            float chance = 0.55f * Math.max(0.05f, 1f - v.arrestTime / 240f) * (0.5f + 0.5f * q)
+            float chance = 0.2f * Math.max(0.1f, 1f - v.arrestTime / 300f) * (0.5f + 0.5f * q)
                     * (1f + Math.min(1f, body.chem.epinephrine / 60f)) * (v.cprPerfusion > 0.3f ? 1.25f : 1f);
-            if (rng.nextFloat() < Math.min(0.9f, chance)) {
+            if (rng.nextFloat() < Math.min(0.6f, chance)) {
                 CirculationSystem.restartHeart(body);
                 result = ShockResult.RESTARTED;
             } else {
@@ -322,21 +329,53 @@ public final class Treatments {
      * @return whether it made the body sick
      */
     public static boolean drink(Body body, float thirst, float sickness, float sicknessChance, float warmth, float caffeine, RandomGenerator rng) {
-        body.needs.thirst = Math.min(com.fleshbone.sim.Needs.MAX_THIRST, Math.max(0f, body.needs.thirst + thirst));
+        Needs n = body.needs;
+        n.thirst = Math.min(Needs.MAX_THIRST, Math.max(Needs.MIN_THIRST, n.thirst + thirst));
         body.vitals.bodyTemp += warmth;
         body.chem.caffeine = Math.min(100f, body.chem.caffeine + caffeine);
         boolean sick = sickness != 0f && rng.nextFloat() < sicknessChance;
-        if (sick) body.needs.sickness = Math.max(0f, Math.min(100f, body.needs.sickness + sickness));
+        if (sick) n.sickness = Math.max(0f, Math.min(100f, n.sickness + sickness));
+        body.derived.compute(body);
         return sick;
     }
 
-    /** Food side effects: spoiled food makes you sick, good food cheers you up, dry food makes you thirsty. */
-    public static boolean eat(Body body, float sickness, float sicknessChance, float mood, float thirst, RandomGenerator rng) {
-        body.mind.moodBonus = Math.max(-40f, Math.min(40f, body.mind.moodBonus + mood));
-        body.needs.thirst = Math.max(0f, body.needs.thirst + thirst);
-        boolean sick = sickness != 0f && rng.nextFloat() < sicknessChance;
-        if (sick) body.needs.sickness = Math.max(0f, Math.min(100f, body.needs.sickness + sickness));
-        return sick;
+    public enum MealResult { FINE, SICK, OVERATE, THREW_UP }
+
+    /**
+     * A meal: hunger and body weight, thirst (dry food is negative), a lasting mood change, and side effects. Spoiled
+     * food can sicken, so can eating with filthy hands (dirt above 75: 10 %). Eating past 125 hunger sickens in
+     * proportion and throws up one time in five. A dislocated jaw makes every bite hurt.
+     */
+    public static MealResult eat(Body body, float hunger, float weight, float thirst, float sickness, float sicknessChance,
+                                 float mood, RandomGenerator rng) {
+        Needs n = body.needs;
+        float excess = Math.max(0f, n.hunger + hunger - Needs.MAX_HUNGER);
+        n.hunger = Math.min(Needs.MAX_HUNGER, n.hunger + hunger);
+        n.weight += weight;
+        n.thirst = Math.min(Needs.MAX_THIRST, Math.max(Needs.MIN_THIRST, n.thirst + thirst));
+        body.mind.addMood(mood);
+        MealResult result = MealResult.FINE;
+        if (sickness != 0f && rng.nextFloat() < sicknessChance) {
+            n.sickness = Math.max(0f, Math.min(100f, n.sickness + sickness));
+            if (sickness > 0f) result = MealResult.SICK;
+        }
+        if (n.dirtiness > 75f && rng.nextFloat() < 0.1f) {
+            n.sickness = Math.min(100f, n.sickness + 8f);
+            result = MealResult.SICK;
+        }
+        if (excess > 0f) {
+            n.sickness = Math.min(100f, n.sickness + excess * 0.5f);
+            result = MealResult.OVERATE;
+            body.emit(BodyEvent.Type.OVERATE);
+            if (rng.nextFloat() < HungerSystem.OVEREATING_VOMIT_CHANCE) {
+                SicknessSystem.startVomiting(body);
+                result = MealResult.THREW_UP;
+            }
+        }
+        PartState head = body.part(BodyPart.HEAD);
+        if (head.isDislocated()) head.pain = Math.min(150f, head.pain + 25f);
+        body.derived.compute(body);
+        return result;
     }
 
     // ------------------------------------------------------------------------------------------------ amputation
@@ -370,7 +409,7 @@ public final class Treatments {
             s.sutured = false;
         }
         body.mind.trauma = Math.min(100f, body.mind.trauma + 30f);
-        body.mind.moodBonus -= 20f;
+        body.mind.addMood(-20f);
         body.emit(BodyEvent.Type.AMPUTATED, part);
         body.derived.compute(body);
     }

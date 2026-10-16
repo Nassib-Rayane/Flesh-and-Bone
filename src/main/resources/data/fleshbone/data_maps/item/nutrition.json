@@ -35,16 +35,20 @@
     },
     "minecraft:cookie": {
       "mood": 4,
-      "thirst": -2
+      "thirst": -2,
+      "weight": 0.08
     },
     "minecraft:dried_kelp": {
-      "thirst": -3
+      "thirst": -3,
+      "weight": 0.01
     },
     "minecraft:cake": {
-      "mood": 12
+      "mood": 12,
+      "weight": 0.35
     },
     "minecraft:pumpkin_pie": {
-      "mood": 8
+      "mood": 8,
+      "weight": 0.3
     },
     "minecraft:golden_carrot": {
       "mood": 5
@@ -97,6 +101,15 @@
     },
     "fleshbone:coffee": {
       "mood": 3
+    },
+    "minecraft:melon_slice": {
+      "weight": 0.01
+    },
+    "minecraft:sweet_berries": {
+      "weight": 0.01
+    },
+    "minecraft:glow_berries": {
+      "weight": 0.01
     }
   }
 }

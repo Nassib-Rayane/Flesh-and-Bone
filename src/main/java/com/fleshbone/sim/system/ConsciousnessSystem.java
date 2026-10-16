@@ -4,12 +4,14 @@ import com.fleshbone.sim.Body;
 import com.fleshbone.sim.BodyEvent;
 import com.fleshbone.sim.BodyPart;
 import com.fleshbone.sim.Environment;
+import com.fleshbone.sim.Needs;
 import com.fleshbone.sim.Vitals;
 import com.fleshbone.sim.injury.InjuryApplier;
 
 /**
  * Consciousness rises 3 %/s toward a cap set by the worst of: head muscle, oxygen, blood pressure, pain, brain
- * health, sleepiness, nausea and temperature. It drops straight to the cap.
+ * health, sleepiness, nausea, temperature, opioids, sleep, vomiting, grogginess and exhaustion. It drops quickly to the
+ * cap. A last stand holds it up.
  */
 public final class ConsciousnessSystem {
     public static final float CONFUSED = 90f;
@@ -19,12 +21,16 @@ public final class ConsciousnessSystem {
     public static final float INCAPACITATED = 30f;
     public static final float UNCONSCIOUS = 20f;
     public static final float RECOVERY_PER_SECOND = 3f;
+    public static final float GROGGY = 75f;
+    public static final float COLLAPSED = 25f;
 
     private ConsciousnessSystem() {}
 
-    /** @param env may be {@code null} on the client, where sleep is unknown */
+    /** @param env may be {@code null} on the client, where bed sleep is unknown */
     public static float cap(Body body, Environment env) {
         Vitals v = body.vitals;
+        Needs n = body.needs;
+        if (v.cardiacArrest) return 0f;
         float headMuscle = body.part(BodyPart.HEAD).muscle;
         float cap = 100f;
         cap = Math.min(cap, 2.1f * headMuscle);
@@ -38,13 +44,16 @@ public final class ConsciousnessSystem {
         if (pain >= PainSystem.COLLAPSE) cap = Math.min(cap, 25f);
         if (v.shock >= PainSystem.SHOCK_UNCONSCIOUS) cap = Math.min(cap, 10f);
         cap = Math.min(cap, v.brainHealth);
-        cap = Math.min(cap, energyCap(body.needs.energy));
-        cap = Math.min(cap, 150f - body.needs.sickness);
+        cap = Math.min(cap, energyCap(n.energy));
+        cap = Math.min(cap, 150f - n.sickness);
         cap = Math.min(cap, temperatureCap(v.bodyTemp));
-        float opioid = body.chem.opiate - body.chem.opiateTolerance * 0.4f;
-        if (opioid > 50f) cap = Math.min(cap, 150f - opioid);
-        if ((env != null && env.sleeping) || body.needs.passedOut) cap = Math.min(cap, 10f);
-        if (v.cardiacArrest) cap = 0f;
+        float relief = ChemistrySystem.relief(body.chem);
+        if (relief > 50f) cap = Math.min(cap, 150f - relief);
+        if (n.vomiting > 0f) cap = Math.min(cap, SicknessSystem.FIT_CONSCIOUSNESS);
+        if (n.groggy > 0f) cap = Math.min(cap, GROGGY);
+        if (n.collapsed > 0f) cap = Math.min(cap, COLLAPSED);
+        if (v.lastStand > 0f) cap = Math.max(cap, 60f);
+        if (body.isAsleep(env)) cap = Math.min(cap, 10f);
         return SimMath.clamp(cap, 0f, 100f);
     }
 
@@ -73,7 +82,7 @@ public final class ConsciousnessSystem {
             float stimulants = body.chem.epinephrine * 0.03f + body.chem.caffeine * 0.01f;
             v.consciousness = Math.min(cap, v.consciousness + (RECOVERY_PER_SECOND + stimulants) * dt);
         }
-        if (env != null && env.sleeping) return;
+        if (body.isAsleep(env)) return;
         if (before >= UNCONSCIOUS && v.consciousness < UNCONSCIOUS) body.emit(BodyEvent.Type.FAINTED, null);
         else if (before < UNCONSCIOUS && v.consciousness >= UNCONSCIOUS) body.emit(BodyEvent.Type.WOKE_UP, null);
     }

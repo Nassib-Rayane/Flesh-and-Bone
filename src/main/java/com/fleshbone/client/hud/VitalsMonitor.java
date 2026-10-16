@@ -39,7 +39,7 @@ public final class VitalsMonitor {
     }
 
     /** ECG amplitude (-1..1) at time {@code t}. */
-    static float wave(Vitals v, float t) {
+    public static float wave(Vitals v, float t) {
         if (v.cardiacArrest) {
             if (v.cprPerfusion > 0.3f) return (float) Math.sin(t * 2 * Math.PI * 110f / 60f) * 0.6f;
             // Fibrillation for the first minute, then flat line

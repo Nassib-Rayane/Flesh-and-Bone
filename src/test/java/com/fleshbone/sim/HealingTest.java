@@ -13,7 +13,7 @@ class HealingTest {
     void fractureHealsInConfiguredTime() {
         Body body = SimTestUtil.body();
         body.part(BodyPart.SHIN_L).fracture = 1f;
-        float t = SimTestUtil.run(body, SimTestUtil.env(), 60 * 60f, b -> !b.part(BodyPart.SHIN_L).isFractured());
+        float t = SimTestUtil.run(body, SimTestUtil.env(), SimTestUtil.STEADY, 60 * 60f, b -> !b.part(BodyPart.SHIN_L).isFractured());
         assertEquals(SimSettings.DEFAULT.fractureHealSeconds(), t, 5f);
     }
 
@@ -22,7 +22,7 @@ class HealingTest {
         Body body = SimTestUtil.body();
         body.part(BodyPart.FOREARM_R).fracture = 1f;
         body.part(BodyPart.FOREARM_R).splinted = true;
-        float t = SimTestUtil.run(body, SimTestUtil.env(), 60 * 60f, b -> !b.part(BodyPart.FOREARM_R).isFractured());
+        float t = SimTestUtil.run(body, SimTestUtil.env(), SimTestUtil.STEADY, 60 * 60f, b -> !b.part(BodyPart.FOREARM_R).isFractured());
         assertEquals(SimSettings.DEFAULT.fractureHealSeconds() / 2.5f, t, 5f);
         assertFalse(body.part(BodyPart.FOREARM_R).splinted, "splint comes off once healed");
         assertTrue(body.drainEvents().stream().anyMatch(e -> e.type() == BodyEvent.Type.FRACTURE_HEALED));
@@ -33,8 +33,8 @@ class HealingTest {
         Body body = SimTestUtil.body();
         body.part(BodyPart.THIGH_L).skin = 50f;
         body.part(BodyPart.THIGH_L).fracture = 1f;
+        body.needs.hunger = 0f;
         Environment env = SimTestUtil.env();
-        env.foodLevel = 0;
         SimTestUtil.run(body, env, 10 * 60f);
         assertEquals(50f, body.part(BodyPart.THIGH_L).skin, 1e-3);
         assertEquals(1f, body.part(BodyPart.THIGH_L).fracture, 1e-6);
@@ -44,7 +44,7 @@ class HealingTest {
     void skinRegrowsInAboutTwentyFiveMinutes() {
         Body body = SimTestUtil.body();
         body.part(BodyPart.HAND_L).skin = 20f;
-        float t = SimTestUtil.run(body, SimTestUtil.env(), 60 * 60f, b -> b.part(BodyPart.HAND_L).skin >= 100f);
+        float t = SimTestUtil.run(body, SimTestUtil.env(), SimTestUtil.STEADY, 60 * 60f, b -> b.part(BodyPart.HAND_L).skin >= 100f);
         assertTrue(t > 15 * 60f && t < 25 * 60f, "80 points at 0.069/s take about 19 minutes, took " + t);
     }
 
@@ -87,6 +87,11 @@ class HealingTest {
         body.vitals.cardiacArrest = true;
         body.chem.opiate = 33f;
         body.needs.thirst = 41f;
+        body.needs.hunger = -12f;
+        body.needs.weight = 64.5f;
+        body.skills.addXp(Skills.Stat.RESILIENCE, 130f);
+        body.senses.leftEyeLost = true;
+        body.vitals.baroreflex = 33f;
         Body copy = SimTestUtil.copy(body);
         assertEquals(0.4f, copy.part(BodyPart.SHIN_L).fracture, 1e-6);
         assertEquals(BandageType.STERILE, copy.part(BodyPart.SHIN_L).bandage);
@@ -95,6 +100,12 @@ class HealingTest {
         assertTrue(copy.vitals.cardiacArrest);
         assertEquals(33f, copy.chem.opiate, 1e-6);
         assertEquals(41f, copy.needs.thirst, 1e-6);
+        assertEquals(-12f, copy.needs.hunger, 1e-6);
+        assertEquals(64.5f, copy.needs.weight, 1e-6);
+        assertEquals(11, copy.skills.resilience());
+        assertEquals(30f, copy.skills.xp(Skills.Stat.RESILIENCE), 1e-4);
+        assertTrue(copy.senses.leftEyeLost);
+        assertEquals(33f, copy.vitals.baroreflex, 1e-6);
         assertEquals(body.vitals.bloodType, copy.vitals.bloodType);
     }
 

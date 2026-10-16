@@ -9,6 +9,8 @@ import com.fleshbone.client.ClientPatients;
 import com.fleshbone.client.FBKeys;
 import com.fleshbone.client.hud.BodyDoll;
 import com.fleshbone.client.hud.MoodleLayer;
+import com.fleshbone.client.hud.UniHealth;
+import com.fleshbone.client.hud.Words;
 import com.fleshbone.client.minigame.BandageMinigame;
 import com.fleshbone.client.minigame.CprMinigame;
 import com.fleshbone.client.minigame.DefibMinigame;
@@ -25,9 +27,12 @@ import com.fleshbone.sim.Body;
 import com.fleshbone.sim.BodyPart;
 import com.fleshbone.sim.Moodle;
 import com.fleshbone.sim.Moodles;
+import com.fleshbone.sim.Environment;
 import com.fleshbone.sim.PartState;
+import com.fleshbone.sim.Skills;
 import com.fleshbone.sim.Vitals;
-import com.fleshbone.sim.system.ConsciousnessSystem;
+import com.fleshbone.sim.system.ChemistrySystem;
+import com.fleshbone.sim.system.SleepSystem;
 import com.fleshbone.sim.treatment.Treatments;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -37,14 +42,16 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * Health panel (key H, or right-click another player with a medical item). Tab "Body": clickable silhouette, details
- * of the selected part and the treatments available in your inventory. Tab "Report": vital signs, needs and every
- * moodle. Time keeps running while it is open, as in Casualties: Unknown.
+ * Health panel (key H, or right-click another player with a medical item), laid out like Casualties: Unknown's: the
+ * UNI-HEALTH readout on the left, the body and its equipment in the middle, the selected part and the treatments
+ * available in your inventory on the right, strength / resilience / intelligence on top, and buttons to sleep or work
+ * out. Tab "Report": every moodle and the finer details. Time keeps running while it is open.
  */
 public class HealthPanelScreen extends Screen {
     private static final int TEXT = 0xFFE0D8CC;
@@ -84,6 +91,10 @@ public class HealthPanelScreen extends Screen {
     private int dollX;
     private int dollY;
     private float dollScale;
+    /** Room for the UNI-HEALTH column next to the body. */
+    private boolean wide;
+    private int uniX;
+    private final List<int[]> buttons = new ArrayList<>();
 
     /** Your own body. */
     public HealthPanelScreen() {
@@ -108,13 +119,15 @@ public class HealthPanelScreen extends Screen {
     @Override
     protected void init() {
         openingChild = false;
-        panelW = Math.min(470, width - 10);
-        panelH = Math.min(272, height - 10);
+        panelW = Math.min(640, width - 10);
+        panelH = Math.min(300, height - 10);
         x0 = (width - panelW) / 2;
         y0 = (height - panelH) / 2;
-        dollScale = Math.max(2f, Math.min(4f, (panelH - 64) / (float) BodyDoll.GRID_H));
-        dollX = x0 + 10;
-        dollY = y0 + 22;
+        wide = panelW >= 580 && panelH >= 230;
+        uniX = x0 + 6;
+        dollScale = Math.max(2f, Math.min(4.5f, (panelH - 74) / (float) BodyDoll.GRID_H));
+        dollX = (wide ? uniX + UniHealth.WIDTH + 10 : x0 + 10);
+        dollY = y0 + 24;
     }
 
     @Override
@@ -160,6 +173,7 @@ public class HealthPanelScreen extends Screen {
         }
         g.text(font, heading, x0 + 8, y0 + 7, HEADER, true);
         drawTabs(g, mouseX, mouseY);
+        drawSkills(g, body, mouseX, mouseY);
 
         if (tab == Tab.BODY) {
             drawBodyTab(g, body, mouseX, mouseY);
@@ -188,18 +202,28 @@ public class HealthPanelScreen extends Screen {
     // ------------------------------------------------------------------------------------------------ body tab
 
     private void drawBodyTab(GuiGraphicsExtractor g, Body body, int mouseX, int mouseY) {
+        boolean exact = isExamining() || ClientBody.vitalsVisible(minecraft.player);
+        if (wide) {
+            UniHealth.draw(g, font, body, uniX, y0 + 22, UniHealth.Detail.FULL, exact,
+                    selected != null ? selected : UniHealth.worstPart(body), ClientBody.time());
+        }
         BodyPart hovered = BodyDoll.partAt(mouseX, mouseY, dollX, dollY, dollScale);
         BodyDoll.draw(g, body, dollX, dollY, dollScale, selected != null ? selected : hovered, ClientBody.time());
         if (hovered != null) g.setTooltipForNextFrame(font, partName(hovered), mouseX, mouseY);
+        int dollRight = dollX + Math.round(BodyDoll.GRID_W * dollScale);
+        drawEquipment(g, dollRight + 4, dollY, mouseX, mouseY);
         int dollBottom = dollY + Math.round(BodyDoll.GRID_H * dollScale);
-        g.text(font, Component.translatable("fleshbone.panel.blood_type", body.vitals.bloodType.display()), x0 + 8, dollBottom + 6, DIM, false);
+        if (!wide) {
+            g.text(font, Component.translatable("fleshbone.panel.blood_type", body.vitals.bloodType.display()), x0 + 8, dollBottom + 6, DIM, false);
+        }
+        drawButtons(g, body, wide ? uniX : x0 + 8, y0 + panelH - 18, mouseX, mouseY);
 
-        int detailsX = dollX + Math.round(BodyDoll.GRID_W * dollScale) + 12;
+        int detailsX = dollRight + 26;
         int treatX = x0 + panelW - 196;
         drawPartDetails(g, body, detailsX, y0 + 24, treatX - detailsX - 8);
         drawTreatments(g, body, treatX, y0 + 24, 188, mouseX, mouseY);
 
-        List<Moodle> moodles = Moodles.compute(body, isExamining() ? 20 : minecraft.player.getFoodData().getFoodLevel());
+        List<Moodle> moodles = Moodles.compute(body);
         int iconsX = detailsX;
         int iconsY = y0 + panelH - 22;
         float time = ClientBody.time();
@@ -450,44 +474,56 @@ public class HealthPanelScreen extends Screen {
     // ------------------------------------------------------------------------------------------------ report tab
 
     private void drawReportTab(GuiGraphicsExtractor g, Body body) {
-        int columnX = x0 + 10;
-        int y = y0 + 24;
-        Vitals v = body.vitals;
-        boolean exact = ClientBody.vitalsVisible(minecraft.player);
-        g.text(font, Component.translatable("fleshbone.panel.vitals"), columnX, y, HEADER, false);
-        y += 11;
-        y = row(g, columnX, y, "blood", exact ? format(v.bloodVolume, 2) + " L" : word("blood", bloodWord(v.bloodVolume)), bloodColor(v.bloodVolume));
-        if (exact) {
-            y = row(g, columnX, y, "pressure", Math.round(v.systolic) + "/" + Math.round(v.diastolic), v.systolic < 90f || v.systolic > 160f ? BAD : TEXT);
-            y = row(g, columnX, y, "pulse", v.cardiacArrest ? "0" : Math.round(v.heartRate) + " bpm", v.cardiacArrest || v.heartRate > 140f ? BAD : TEXT);
-            y = row(g, columnX, y, "breathing", format(v.respRate, 0) + "/min", v.respRate < 8f ? BAD : TEXT);
-            y = row(g, columnX, y, "spo2", Math.round(v.spo2) + "%", v.spo2 < 85f ? BAD : TEXT);
-            y = row(g, columnX, y, "temperature", format(v.bodyTemp, 1) + "°C", v.bodyTemp < 35f || v.bodyTemp > 38.5f ? WARN : TEXT);
+        boolean chip = isExamining() || ClientBody.vitalsVisible(minecraft.player);
+        int listStart = x0 + 160;
+        if (!wide) {
+            UniHealth.draw(g, font, body, x0 + 6, y0 + 22, UniHealth.Detail.FULL, chip, null, ClientBody.time());
+            listStart = x0 + UniHealth.WIDTH + 14;
         } else {
-            y = row(g, columnX, y, "pulse", word("pulse", pulseWord(v)), v.cardiacArrest || v.heartRate > 140f ? BAD : TEXT);
-            y = row(g, columnX, y, "breathing", word("breathing", breathingWord(v)), v.respRate < 8f ? BAD : TEXT);
-            y = row(g, columnX, y, "temperature", word("temperature", temperatureWord(v.bodyTemp)), v.bodyTemp < 35f || v.bodyTemp > 38.5f ? WARN : TEXT);
+            drawDetails(g, body, x0 + 10, y0 + 24, chip);
+            listStart = x0 + 230;
         }
-        y = row(g, columnX, y, "consciousness", word("consciousness", consciousnessWord(v.consciousness)), v.consciousness < 55f ? BAD : v.consciousness < 90f ? WARN : TEXT);
-        y = row(g, columnX, y, "pain", Math.round(body.derived.totalPain) + "", body.derived.totalPain > 55f ? BAD : body.derived.totalPain > 30f ? WARN : TEXT);
+        drawMoodleList(g, body, listStart);
+    }
 
-        y += 6;
-        g.text(font, Component.translatable("fleshbone.panel.needs"), columnX, y, HEADER, false);
+    /** Finer readings the UNI-HEALTH panel has no room for. */
+    private void drawDetails(GuiGraphicsExtractor g, Body body, int x, int y, boolean exact) {
+        Vitals v = body.vitals;
+        g.text(font, Component.translatable("fleshbone.panel.details"), x, y, HEADER, false);
         y += 11;
-        if (!isExamining()) {
-            int food = minecraft.player.getFoodData().getFoodLevel();
-            y = row(g, columnX, y, "food", food * 5 + "%", food < 7 ? BAD : food < 14 ? WARN : TEXT);
+        y = row(g, x, y, "weight_class", Component.translatable("fleshbone.weight." + body.derived.weightClass.key()),
+                body.derived.weightClass.level == 0 ? TEXT : WARN);
+        y = row(g, x, y, "capacity", Words.format(body.needs.carried, 1) + " / " + Words.format(body.derived.capacity, 1) + " kg",
+                body.derived.overload > 0f ? WARN : TEXT);
+        y = row(g, x, y, "strength_left", Math.round(body.derived.strength * 100f) + "%", body.derived.strength < 0.75f ? WARN : TEXT);
+        y = row(g, x, y, "stamina_cap", Math.round(body.derived.staminaCap) + "%", body.derived.staminaCap < 95f ? WARN : TEXT);
+        if (exact) {
+            y = row(g, x, y, "baroreflex", (v.baroreflex >= 0 ? "+" : "") + Math.round(v.baroreflex) + " bpm", Math.abs(v.baroreflex) > 30f ? WARN : TEXT);
+            y = row(g, x, y, "vessel_tone", (v.vesselTone >= 0 ? "+" : "") + Math.round(v.vesselTone * 100f) + "%", Math.abs(v.vesselTone) > 0.4f ? WARN : TEXT);
+            y = row(g, x, y, "viscosity", Math.round(v.viscosity) + "", Math.abs(v.viscosity) > 40f ? WARN : TEXT);
+            y = row(g, x, y, "fibrillation", Math.round(v.fibrillation) + "%", v.fibrillation > 15f ? BAD : TEXT);
         }
-        y = row(g, columnX, y, "thirst", Math.round(Math.min(100f, body.needs.thirst)) + "%", body.needs.thirst < 35f ? BAD : body.needs.thirst < 55f ? WARN : TEXT);
-        y = row(g, columnX, y, "energy", Math.round(body.needs.energy) + "%", body.needs.energy < 25f ? BAD : TEXT);
-        y = row(g, columnX, y, "stamina", Math.round(body.needs.stamina) + "%", body.needs.stamina < 35f ? WARN : TEXT);
-        row(g, columnX, y, "mood", word("mood", moodWord(body.mind.mood)), body.mind.mood < -30f ? BAD : TEXT);
+        y = row(g, x, y, "opioids", Math.round(body.chem.opiate) + " / " + Math.round(body.chem.opiateTolerance),
+                ChemistrySystem.withdrawal(body.chem) > 5f ? BAD : TEXT);
+        y = row(g, x, y, "wetness", Math.round(body.needs.wetness) + "%", body.needs.wetness > 45f ? WARN : TEXT);
+        y = row(g, x, y, "dirtiness", Math.round(body.needs.dirtiness) + "%", body.needs.dirtiness > 75f ? WARN : TEXT);
+        if (body.senses.hearingLoss > 1f) y = row(g, x, y, "hearing", Math.round(body.senses.hearingLoss) + "%", WARN);
+        y = row(g, x, y, "trauma", Math.round(body.mind.trauma) + "", body.mind.trauma > 45f ? BAD : TEXT);
+        if (!isExamining()) {
+            int quality = body.needs.asleep ? body.needs.sleepQuality : -1;
+            if (quality > 0) y = row(g, x, y, "sleep", Component.translatable("fleshbone.sleep_quality." + quality), TEXT);
+        }
+        for (Skills.Stat stat : Skills.Stat.VALUES) {
+            y = row(g, x, y, "skill." + stat.key(), body.skills.level(stat) + "  (" + Math.round(body.skills.xp(stat)) + "/"
+                    + Math.round(Skills.xpToNext(body.skills.level(stat))) + " XP)", TEXT);
+        }
+    }
 
-        int listX = x0 + 160;
+    private void drawMoodleList(GuiGraphicsExtractor g, Body body, int listX) {
         int listY = y0 + 24;
         g.text(font, Component.translatable("fleshbone.panel.moodles"), listX, listY, HEADER, false);
         listY += 12;
-        List<Moodle> moodles = Moodles.compute(body, isExamining() ? 20 : minecraft.player.getFoodData().getFoodLevel());
+        List<Moodle> moodles = Moodles.compute(body);
         if (moodles.isEmpty()) {
             g.text(font, Component.translatable("fleshbone.panel.no_moodles"), listX, listY, DIM, false);
             return;
@@ -505,65 +541,85 @@ public class HealthPanelScreen extends Screen {
         }
     }
 
+    // ------------------------------------------------------------------------------------------------ skills, equipment, buttons
+
+    /** Strength, resilience and intelligence with their experience bars, next to the title. */
+    private void drawSkills(GuiGraphicsExtractor g, Body body, int mouseX, int mouseY) {
+        int x = x0 + 8 + font.width(isExamining() ? Component.literal("") : title) + 16;
+        if (isExamining()) x = x0 + 200;
+        int limit = tabX(Tab.BODY) - 6;
+        for (Skills.Stat stat : Skills.Stat.VALUES) {
+            if (x + 58 > limit) break;
+            Component name = Component.translatable("fleshbone.skill." + stat.key() + ".short");
+            g.text(font, name, x, y0 + 5, DIM, false);
+            int level = body.skills.level(stat);
+            g.text(font, String.valueOf(level), x + 20, y0 + 5, HEADER, false);
+            g.fill(x, y0 + 15, x + 52, y0 + 17, 0xFF2A2420);
+            g.fill(x, y0 + 15, x + Math.round(52 * body.skills.progress(stat)), y0 + 17, 0xFF7FC0E0);
+            if (mouseX >= x && mouseX < x + 56 && mouseY >= y0 + 3 && mouseY < y0 + 18) {
+                g.setTooltipForNextFrame(font, Component.translatable("fleshbone.skill." + stat.key() + ".desc",
+                        Math.round(body.skills.xp(stat)), Math.round(Skills.xpToNext(level))), mouseX, mouseY);
+            }
+            x += 60;
+        }
+    }
+
+    private static final EquipmentSlot[] EQUIPMENT = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET,
+            EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND};
+
+    /** What the body wears and holds (the patient's, when examining). */
+    private void drawEquipment(GuiGraphicsExtractor g, int x, int y, int mouseX, int mouseY) {
+        Entity entity = isExamining() ? minecraft.level.getEntity(patientId) : minecraft.player;
+        if (!(entity instanceof net.minecraft.world.entity.LivingEntity living)) return;
+        for (int i = 0; i < EQUIPMENT.length; i++) {
+            int sy = y + i * 18 + (i >= 4 ? 6 : 0);
+            g.fill(x, sy, x + 18, sy + 18, 0xFF1C1814);
+            g.outline(x, sy, 18, 18, 0xFF3A2E24);
+            ItemStack stack = living.getItemBySlot(EQUIPMENT[i]);
+            if (!stack.isEmpty()) {
+                g.item(stack, x + 1, sy + 1);
+                if (mouseX >= x && mouseX < x + 18 && mouseY >= sy && mouseY < sy + 18) {
+                    g.setTooltipForNextFrame(font, stack.getHoverName(), mouseX, mouseY);
+                }
+            }
+        }
+    }
+
+    /** Sleep here, or start a workout (your own body only). */
+    private void drawButtons(GuiGraphicsExtractor g, Body body, int x, int y, int mouseX, int mouseY) {
+        buttons.clear();
+        if (isExamining()) return;
+        String[] keys = {"sleep", "pushups", "squats", "plank"};
+        int[] exercises = {-1, Environment.Exercise.PUSHUPS.ordinal(), Environment.Exercise.SQUATS.ordinal(), Environment.Exercise.PLANK.ordinal()};
+        for (int i = 0; i < keys.length; i++) {
+            boolean active = i == 0 ? body.needs.asleep : body.needs.exercise == exercises[i];
+            Component label = Component.translatable("fleshbone.panel.button." + keys[i] + (i == 0 && active ? "_wake" : ""));
+            int w = font.width(label) + 10;
+            boolean hovered = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 14;
+            g.fill(x, y, x + w, y + 14, active ? 0xFF3A4A2E : hovered ? 0xFF2A2A22 : 0xFF1C1C16);
+            g.outline(x, y, w, 14, active ? 0xFF7FC060 : 0xFF4A4030);
+            g.centeredText(font, label, x + w / 2, y + 3, active ? GOOD : TEXT);
+            if (hovered) {
+                Component tip = i == 0 ? sleepTooltip(body) : Component.translatable("fleshbone.panel.button." + keys[i] + ".desc");
+                g.setTooltipForNextFrame(font, tip, mouseX, mouseY);
+            }
+            buttons.add(new int[] {x, y, x + w, y + 14, exercises[i]});
+            x += w + 4;
+        }
+    }
+
+    private Component sleepTooltip(Body body) {
+        if (body.needs.asleep) return Component.translatable("fleshbone.panel.button.sleep_wake.desc");
+        SleepSystem.Refusal refusal = SleepSystem.refusal(body, SleepSystem.OKAY);
+        if (refusal != null && refusal != SleepSystem.Refusal.BAD_SPOT) return Component.translatable("fleshbone.message.sleep." + refusal.key);
+        return Component.translatable("fleshbone.panel.button.sleep.desc");
+    }
+
     private int row(GuiGraphicsExtractor g, int x, int y, String key, Object value, int color) {
         g.text(font, Component.translatable("fleshbone.panel.vital." + key), x, y, DIM, false);
         Component text = value instanceof Component c ? c : Component.literal(String.valueOf(value));
         g.text(font, text, x + 138 - font.width(text), y, color, false);
         return y + 10;
-    }
-
-    private static Component word(String group, String word) {
-        return Component.translatable("fleshbone.panel.word." + group + "." + word);
-    }
-
-    private static String bloodWord(float litres) {
-        if (litres >= 4.6f) return "none";
-        if (litres >= 4.0f) return "light";
-        if (litres >= 3.3f) return "heavy";
-        return "critical";
-    }
-
-    private static int bloodColor(float litres) {
-        return litres >= 4.6f ? TEXT : litres >= 4.0f ? WARN : BAD;
-    }
-
-    private static String pulseWord(Vitals v) {
-        if (v.cardiacArrest || v.heartRate <= 0f) return "absent";
-        if (v.fibrillation > 50f) return "chaotic";
-        if (v.heartRate > 120f) return v.systolic < 90f ? "weak_fast" : "fast";
-        if (v.heartRate < 50f) return "slow";
-        return "normal";
-    }
-
-    private static String breathingWord(Vitals v) {
-        if (v.respRate < 2.5f) return "absent";
-        if (v.respRate < 10f) return "shallow";
-        if (v.respRate > 24f) return "fast";
-        return "normal";
-    }
-
-    private static String temperatureWord(float temp) {
-        if (temp < 32.5f) return "hypothermia";
-        if (temp < 35.5f) return "cold";
-        if (temp > 40f) return "high_fever";
-        if (temp > 38f) return "fever";
-        return "normal";
-    }
-
-    private static String consciousnessWord(float c) {
-        if (c < ConsciousnessSystem.UNCONSCIOUS) return "unconscious";
-        if (c < ConsciousnessSystem.INCAPACITATED) return "incapacitated";
-        if (c < ConsciousnessSystem.FAINTING) return "fainting";
-        if (c < ConsciousnessSystem.VERY_CONFUSED) return "very_confused";
-        if (c < ConsciousnessSystem.CONFUSED) return "confused";
-        return "alert";
-    }
-
-    private static String moodWord(float mood) {
-        if (mood < -50f) return "depressed";
-        if (mood < -10f) return "low";
-        if (mood > 30f) return "happy";
-        return "neutral";
     }
 
     // ------------------------------------------------------------------------------------------------ input
@@ -580,6 +636,13 @@ public class HealthPanelScreen extends Screen {
             }
         }
         if (tab == Tab.BODY) {
+            for (int[] b : buttons) {
+                if (mx >= b[0] && mx < b[2] && my >= b[1] && my < b[3]) {
+                    if (b[4] < 0) send(new FBPayloads.Sleep());
+                    else send(new FBPayloads.Exercise(body() != null && body().needs.exercise == b[4] ? 0 : b[4]));
+                    return true;
+                }
+            }
             BodyPart part = BodyDoll.partAt(mx, my, dollX, dollY, dollScale);
             if (part != null) {
                 selected = part == selected ? null : part;

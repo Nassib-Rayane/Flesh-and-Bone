@@ -58,13 +58,13 @@ public class SutureMinigame extends MinigameScreen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    protected boolean click(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             if (!stitches.click((float) event.x(), (float) event.y())) missFlash = 1f;
             if (stitches.done()) finish(stitches.quality(), 0);
             return true;
         }
-        return super.mouseClicked(event, doubleClick);
+        return super.click(event, doubleClick);
     }
 
     @Override

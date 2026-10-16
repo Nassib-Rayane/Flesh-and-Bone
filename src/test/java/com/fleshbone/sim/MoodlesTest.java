@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class MoodlesTest {
     @Test
     void healthyBodyHasNoMoodles() {
-        assertTrue(Moodles.compute(SimTestUtil.body(), 20).isEmpty());
+        assertTrue(Moodles.compute(SimTestUtil.body()).isEmpty());
     }
 
     @Test
@@ -20,7 +20,7 @@ class MoodlesTest {
         body.part(BodyPart.THIGH_L).bleed = 20f; // 0.36 L/min
         body.part(BodyPart.SHIN_R).fracture = 1f;
         body.derived.compute(body);
-        List<Moodle> moodles = Moodles.compute(body, 20);
+        List<Moodle> moodles = Moodles.compute(body);
         assertTrue(moodles.contains(new Moodle(Moodle.Type.BLEEDING, 3)), moodles.toString());
         assertTrue(moodles.contains(new Moodle(Moodle.Type.FRACTURE, 2)), moodles.toString());
     }
@@ -32,15 +32,25 @@ class MoodlesTest {
         body.vitals.adrenaline = 80f;
         body.part(BodyPart.HAND_L).shrapnel = 1;
         body.derived.compute(body);
-        List<Moodle> moodles = Moodles.compute(body, 20);
+        List<Moodle> moodles = Moodles.compute(body);
         assertEquals(Moodle.Type.CARDIAC_ARREST, moodles.get(0).type());
         assertTrue(moodles.get(moodles.size() - 1).type().positive);
     }
 
     @Test
-    void hungerUsesVanillaFood() {
+    void hungerWeightAndLoadShow() {
         Body body = SimTestUtil.body();
-        assertTrue(Moodles.compute(body, 2).contains(new Moodle(Moodle.Type.HUNGER, 4)));
-        assertTrue(Moodles.compute(body, 12).contains(new Moodle(Moodle.Type.HUNGER, 1)));
+        body.needs.hunger = 0f;
+        assertTrue(Moodles.compute(body).contains(new Moodle(Moodle.Type.HUNGER, 4)));
+        body.needs.hunger = 35f;
+        assertTrue(Moodles.compute(body).contains(new Moodle(Moodle.Type.HUNGER, 1)));
+        body.needs.hunger = 110f;
+        assertTrue(Moodles.compute(body).contains(new Moodle(Moodle.Type.SATIATED, 1)));
+        body.needs.weight = 80f;
+        body.needs.carried = 40f;
+        body.derived.compute(body);
+        List<Moodle> moodles = Moodles.compute(body);
+        assertTrue(moodles.contains(new Moodle(Moodle.Type.OVERWEIGHT, 1)), moodles.toString());
+        assertTrue(moodles.stream().anyMatch(m -> m.type() == Moodle.Type.OVERLOADED), moodles.toString());
     }
 }

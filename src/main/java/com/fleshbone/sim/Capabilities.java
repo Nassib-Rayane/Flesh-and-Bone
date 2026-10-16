@@ -2,11 +2,17 @@ package com.fleshbone.sim;
 
 import com.fleshbone.sim.BodyPart.Side;
 import com.fleshbone.sim.system.ConsciousnessSystem;
+import com.fleshbone.sim.system.HungerSystem;
 import com.fleshbone.sim.system.PainSystem;
+import com.fleshbone.sim.system.SkillSystem;
+import com.fleshbone.sim.system.StaminaSystem;
 
 /**
  * What the body can physically do right now, as multipliers on vanilla abilities. Pure function of the body state so
  * the client can predict it (sprint, movement input) from the synced body.
+ *
+ * <p>Legs, arms and trunk set what is mechanically possible; stamina strength (a cubic curve of stamina), carried
+ * load, pain, consciousness, mood, a full stomach, body weight and strength level scale it.
  *
  * @param move          walking speed multiplier (0 when incapacitated)
  * @param jump          jump strength multiplier
@@ -33,10 +39,15 @@ public record Capabilities(
     /** @param mainSide side of the dominant hand */
     public static Capabilities compute(Body body, Side mainSide) {
         Vitals v = body.vitals;
-        float pain = body.derived.totalPain;
+        Needs n = body.needs;
+        Derived d = body.derived;
+        float pain = d.totalPain;
         float consciousness = v.consciousness;
         boolean incapacitated = body.isIncapacitated();
         boolean unconscious = body.isUnconscious();
+        float strength = d.strength;
+        float over = d.overload;
+        int weight = d.weightClass.level;
 
         float legs = leg(body, Side.LEFT) * leg(body, Side.RIGHT);
         PartState abdomen = body.part(BodyPart.ABDOMEN);
@@ -44,33 +55,42 @@ public record Capabilities(
         float painMove = pain > PainSystem.AGONY ? 0.65f : pain > PainSystem.SEVERE ? 0.85f : pain > PainSystem.PAIN ? 0.95f : 1f;
         float lostConsciousness = 1f - consciousness / 100f;
         float consciousnessMove = 1f - 0.97f * lostConsciousness * lostConsciousness * lostConsciousness;
-        float stamina = body.needs.stamina;
-        float staminaMove = stamina < 15f ? 0.7f : stamina < 35f ? 0.85f : 1f;
+        float staminaMove = 0.4f + 0.6f * strength;
         float mood = body.mind.mood;
         float lethargy = mood < -50f ? 0.92f : 1f;
-        float move = incapacitated ? 0f : legs * core * painMove * consciousnessMove * staminaMove * lethargy;
+        float load = 1f - 0.25f * over;
+        float stuffed = n.hunger > HungerSystem.FULL ? 0.95f : 1f;
+        float bulk = Math.abs(weight) >= 3 ? 0.9f : 1f;
+        float retching = n.vomiting > 0f ? 0.05f : 1f;
+        float move = incapacitated ? 0f
+                : legs * core * painMove * consciousnessMove * staminaMove * lethargy * load * stuffed * bulk * retching;
 
         float jump = Math.min(legJump(body, Side.LEFT), legJump(body, Side.RIGHT));
         if (pain > PainSystem.AGONY) jump *= 0.7f;
-        if (incapacitated) jump = 0f;
+        jump *= (0.5f + 0.5f * strength) * (1f - 0.2f * over) * (weight >= 3 ? 0.85f : 1f);
+        if (incapacitated || n.vomiting > 0f) jump = 0f;
 
         float arm = arm(body, mainSide);
         float trunk = 1f;
+        // Cracked ribs, a dislocated spine or a broken neck: −40 % each
         if (body.part(BodyPart.THORAX).isFractured()) trunk *= 0.6f;
         if (body.part(BodyPart.THORAX).isDislocated()) trunk *= 0.6f;
         if (body.part(BodyPart.HEAD).isFractured()) trunk *= 0.6f;
         float painAttack = pain > PainSystem.SEVERE ? 0.85f : 1f;
-        float attackDamage = arm * trunk * painAttack;
+        float frail = weight <= -3 ? 0.85f : 1f;
+        float attackDamage = arm * trunk * painAttack * (0.3f + 0.7f * strength) * frail
+                * SkillSystem.attackMultiplier(body.skills);
         float gloom = mood < -30f ? 0.9f : 1f;
         float attackSpeed = Math.max(0.3f, consciousness / 100f) * (pain > PainSystem.AGONY ? 0.8f : 1f)
-                * (stamina < 50f ? 0.85f : 1f) * gloom;
-        float coldHands = body.vitals.bodyTemp < 34f ? 0.8f : 1f;
-        float mining = armMining(body, mainSide) * painAttack * (stamina < 35f ? 0.8f : 1f) * gloom * coldHands;
+                * (0.6f + 0.4f * strength) * gloom / (1f + over);
+        float coldHands = v.bodyTemp < 34f ? 0.8f : 1f;
+        float mining = armMining(body, mainSide) * painAttack * (0.4f + 0.6f * strength) * gloom * coldHands;
 
         float safeFall = 0f;
         for (BodyPart part : BodyPart.VALUES) {
             if (part.isLeg() && body.part(part).isFractured()) safeFall -= 1f;
         }
+        if (over > 0.5f) safeFall -= 1f;
 
         boolean legBroken = false;
         boolean legMissing = false;
@@ -81,7 +101,8 @@ public record Capabilities(
             if (s.amputated) legMissing = true;
         }
         boolean canSprint = !incapacitated && !legBroken && !legMissing && pain <= PainSystem.AGONY
-                && consciousness >= ConsciousnessSystem.FAINTING && stamina >= 35f;
+                && consciousness >= ConsciousnessSystem.FAINTING && n.stamina > StaminaSystem.SPRINT_MIN
+                && over < 1f && n.vomiting <= 0f;
 
         return new Capabilities(move, jump, attackDamage, attackSpeed, mining, safeFall, canSprint,
                 !incapacitated && handUsable(body, mainSide),

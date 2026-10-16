@@ -1,73 +1,96 @@
 {
   "values": {
     "minecraft:fire": {
-      "heat": 15
+      "temperature": 50,
+      "strength": 0.5
     },
     "minecraft:soul_fire": {
-      "heat": 10
+      "temperature": 40,
+      "strength": 0.4
     },
     "minecraft:campfire": {
-      "heat": 18
+      "temperature": 45,
+      "strength": 0.6
     },
     "minecraft:soul_campfire": {
-      "heat": 12
+      "temperature": 38,
+      "strength": 0.45
     },
     "minecraft:lava": {
-      "heat": 25
+      "temperature": 80,
+      "strength": 0.55
     },
     "minecraft:magma_block": {
-      "heat": 8
+      "temperature": 38,
+      "strength": 0.25
     },
     "minecraft:furnace": {
-      "heat": 8
+      "temperature": 40,
+      "strength": 0.3
     },
     "minecraft:blast_furnace": {
-      "heat": 9
+      "temperature": 42,
+      "strength": 0.32
     },
     "minecraft:smoker": {
-      "heat": 8
+      "temperature": 40,
+      "strength": 0.3
     },
     "minecraft:torch": {
-      "heat": 2
+      "temperature": 32,
+      "strength": 0.06
     },
     "minecraft:wall_torch": {
-      "heat": 2
+      "temperature": 32,
+      "strength": 0.06
     },
     "minecraft:soul_torch": {
-      "heat": 1
+      "temperature": 30,
+      "strength": 0.04
     },
     "minecraft:soul_wall_torch": {
-      "heat": 1
+      "temperature": 30,
+      "strength": 0.04
     },
     "minecraft:lantern": {
-      "heat": 3
+      "temperature": 32,
+      "strength": 0.08
     },
     "minecraft:soul_lantern": {
-      "heat": 2
+      "temperature": 30,
+      "strength": 0.06
     },
     "minecraft:jack_o_lantern": {
-      "heat": 2
+      "temperature": 30,
+      "strength": 0.05
     },
     "minecraft:glowstone": {
-      "heat": 1
+      "temperature": 28,
+      "strength": 0.03
     },
     "minecraft:shroomlight": {
-      "heat": 1
+      "temperature": 28,
+      "strength": 0.03
     },
     "minecraft:ice": {
-      "heat": -3
+      "temperature": -2,
+      "strength": 0.12
     },
     "minecraft:packed_ice": {
-      "heat": -4
+      "temperature": -6,
+      "strength": 0.15
     },
     "minecraft:blue_ice": {
-      "heat": -6
+      "temperature": -12,
+      "strength": 0.2
     },
     "minecraft:snow_block": {
-      "heat": -2
+      "temperature": 0,
+      "strength": 0.08
     },
     "minecraft:powder_snow": {
-      "heat": -4
+      "temperature": -5,
+      "strength": 0.18
     }
   }
 }

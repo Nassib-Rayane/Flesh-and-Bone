@@ -25,7 +25,7 @@ public final class MoodleLayer implements GuiLayer {
         if (mc.options.hideGui || mc.player == null || !FBConfig.SHOW_MOODLES.get()) return;
         Body body = ClientBody.get();
         if (body == null) return;
-        List<Moodle> moodles = Moodles.compute(body, mc.player.getFoodData().getFoodLevel());
+        List<Moodle> moodles = Moodles.compute(body);
         int max = Math.min(moodles.size(), FBConfig.MAX_MOODLES.get());
         int x = graphics.guiWidth() - SIZE - 3;
         int y = 54;

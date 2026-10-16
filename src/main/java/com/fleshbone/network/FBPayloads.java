@@ -112,6 +112,32 @@ public final class FBPayloads {
         @Override public Type<Thought> type() { return TYPE; }
     }
 
+    /** Client → server: lie down to sleep where you stand, or get up if already asleep. */
+    public record Sleep() implements CustomPacketPayload {
+        public static final Type<Sleep> TYPE = new Type<>(FleshBone.id("sleep"));
+        public static final StreamCodec<ByteBuf, Sleep> STREAM_CODEC = StreamCodec.unit(new Sleep());
+
+        @Override public Type<Sleep> type() { return TYPE; }
+    }
+
+    /** Client → server: start a workout ({@code Environment.Exercise} ordinal), or stop it with 0. */
+    public record Exercise(int exercise) implements CustomPacketPayload {
+        public static final Type<Exercise> TYPE = new Type<>(FleshBone.id("exercise"));
+        public static final StreamCodec<ByteBuf, Exercise> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Exercise::exercise, Exercise::new);
+
+        @Override public Type<Exercise> type() { return TYPE; }
+    }
+
+    /** Server → client: a damaged brain misfires ({@code BodyEvent.Type} ordinal of the episode). */
+    public record Episode(int episode) implements CustomPacketPayload {
+        public static final Type<Episode> TYPE = new Type<>(FleshBone.id("episode"));
+        public static final StreamCodec<ByteBuf, Episode> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Episode::episode, Episode::new);
+
+        @Override public Type<Episode> type() { return TYPE; }
+    }
+
     /** Server → client: the examination ended (patient out of reach, dead or gone). */
     public record PatientGone(int targetId) implements CustomPacketPayload {
         public static final Type<PatientGone> TYPE = new Type<>(FleshBone.id("patient_gone"));

@@ -13,7 +13,9 @@ public enum DeathCause {
     HEATSTROKE,
     DEHYDRATION,
     STARVATION,
-    OVERDOSE;
+    OVERDOSE,
+    WATER_INTOXICATION,
+    ENVENOMATION;
 
     private final String id = name().toLowerCase(Locale.ROOT);
 

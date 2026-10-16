@@ -126,6 +126,11 @@
         {
           "type": "minecraft:empty",
           "weight": 10
+        },
+        {
+          "type": "minecraft:item",
+          "name": "fleshbone:antivenom",
+          "weight": 4
         }
       ],
       "rolls": {

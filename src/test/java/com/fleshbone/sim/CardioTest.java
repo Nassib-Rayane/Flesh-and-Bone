@@ -15,7 +15,7 @@ import com.fleshbone.sim.treatment.Treatments;
 
 class CardioTest {
     @Test
-    void earlyShockUsuallyRestartsTheHeart() {
+    void earlyShockWithEpinephrineRestartsTheHeartOftenEnough() {
         int restarted = 0;
         Random rng = new Random(3);
         for (int n = 0; n < 500; n++) {
@@ -24,7 +24,7 @@ class CardioTest {
             body.chem.epinephrine = 60f;
             if (Treatments.defibrillate(body, 1f, rng) == Treatments.ShockResult.RESTARTED) restarted++;
         }
-        assertTrue(restarted > 350, "an immediate full shock with epinephrine works most of the time: " + restarted);
+        assertTrue(restarted > 150 && restarted < 250, "one in five, doubled by epinephrine: " + restarted);
     }
 
     @Test
@@ -38,6 +38,21 @@ class CardioTest {
             if (Treatments.defibrillate(body, 1f, rng) == Treatments.ShockResult.RESTARTED) restarted++;
         }
         assertTrue(restarted < 50, "after four minutes of arrest it is almost hopeless: " + restarted);
+    }
+
+    @Test
+    void epinephrineRestartsAPerfusedHeart() {
+        Body body = SimTestUtil.body();
+        CirculationSystem.stopHeart(body);
+        Treatments.injectEpinephrine(body);
+        Environment env = SimTestUtil.env();
+        Random rng = new Random(12);
+        int tick = 0;
+        for (; tick < 20 * 180 && body.vitals.cardiacArrest; tick++) {
+            body.vitals.cprPerfusion = 1f;
+            body.tick(env, SimTestUtil.SETTINGS, rng);
+        }
+        assertFalse(body.vitals.cardiacArrest, "3 % a second with CPR");
     }
 
     @Test
@@ -66,7 +81,10 @@ class CardioTest {
         Treatments.injectProcoagulant(body);
         Environment env = SimTestUtil.env();
         Random rng = new Random(9);
-        for (int tick = 0; tick < 20 * 300 && !body.vitals.embolism; tick++) body.tick(env, SimSettings.DEFAULT, rng);
+        for (int tick = 0; tick < 20 * 1200 && !body.vitals.embolism; tick++) {
+            if (tick % (20 * 60) == 0) Treatments.injectProcoagulant(body);
+            body.tick(env, SimTestUtil.SETTINGS, rng);
+        }
         assertTrue(body.vitals.embolism, "thick blood eventually clots in the lungs (viscosity " + body.vitals.viscosity + ")");
         float thorax = body.part(BodyPart.THORAX).muscle;
         SimTestUtil.run(body, env, 10f);

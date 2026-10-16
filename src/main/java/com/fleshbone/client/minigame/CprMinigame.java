@@ -58,12 +58,12 @@ public class CprMinigame extends MinigameScreen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    protected boolean click(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             compress();
             return true;
         }
-        return super.mouseClicked(event, doubleClick);
+        return super.click(event, doubleClick);
     }
 
     @Override

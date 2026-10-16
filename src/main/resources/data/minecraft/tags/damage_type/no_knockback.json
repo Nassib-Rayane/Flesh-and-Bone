@@ -10,6 +10,8 @@
     "fleshbone:heatstroke",
     "fleshbone:dehydration",
     "fleshbone:starvation",
-    "fleshbone:overdose"
+    "fleshbone:overdose",
+    "fleshbone:water_intoxication",
+    "fleshbone:envenomation"
   ]
 }

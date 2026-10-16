@@ -7,6 +7,9 @@ import com.fleshbone.sim.BodyEvent;
 import com.fleshbone.sim.BodyPart;
 import com.fleshbone.sim.PartState;
 import com.fleshbone.sim.Vitals;
+import com.fleshbone.sim.system.HygieneSystem;
+import com.fleshbone.sim.system.SensesSystem;
+import com.fleshbone.sim.system.SleepSystem;
 
 /** Turns an {@link Injury} into skin, muscle, bleeding, pain and lesions on the body. */
 public final class InjuryApplier {
@@ -105,12 +108,22 @@ public final class InjuryApplier {
             }
             case FREEZE -> v.bodyTemp -= sev * 0.02f;
             case BURN -> v.bodyTemp += sev * 0.01f;
+            // A blast close by rings the ears
+            case EXPLOSION -> SensesSystem.deafen(body, sev * 0.6f);
             default -> { }
         }
+        // A hard piercing blow to the face can take an eye
+        if (part == BodyPart.HEAD && sev > 25f
+                && (kind == InjuryKind.PIERCE || kind == InjuryKind.BALLISTIC || kind == InjuryKind.EXPLOSION || kind == InjuryKind.CUT)
+                && rng.nextFloat() < Math.min(0.3f, (sev - 25f) / 125f)) {
+            SensesSystem.loseEye(body, rng);
+        }
         if (injury.venom() > 0f) {
-            body.needs.sickness = Math.min(100f, body.needs.sickness + injury.venom() * 0.5f);
+            body.chem.venom = Math.min(100f, body.chem.venom + injury.venom());
             s.pain = Math.min(150f, s.pain + injury.venom() * 0.5f);
         }
+        HygieneSystem.soil(body, HygieneSystem.HIT_DIRT);
+        if (body.needs.asleep) SleepSystem.wake(body, SleepSystem.WakeReason.HURT);
     }
 
     /** Some bones break more easily than others. */

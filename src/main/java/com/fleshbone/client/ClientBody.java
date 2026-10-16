@@ -19,9 +19,9 @@ public final class ClientBody {
         return player.getData(FBAttachments.BODY);
     }
 
-    /** Whether exact vital signs are visible: config override, or a vitals monitor anywhere in the inventory. */
+    /** Whether exact values are visible: everyone has a health chip (server config), or a vitals monitor is carried. */
     public static boolean vitalsVisible(Player player) {
-        if (com.fleshbone.config.FBConfig.ALWAYS_SHOW_VITALS.get()) return true;
+        if (com.fleshbone.config.FBSettings.healthChip()) return true;
         if (player == null) return false;
         var inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {

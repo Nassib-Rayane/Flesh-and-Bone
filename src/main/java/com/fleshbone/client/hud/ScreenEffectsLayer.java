@@ -53,19 +53,44 @@ public final class ScreenEffectsLayer implements GuiLayer {
             if (heat > 0f) vignette(g, w, h, 0xFF7A1A, heat * 0.5f * intensity);
         }
 
+        // A lost eye takes one side of the view, both take nearly everything
+        var senses = body.senses;
+        if (senses.blind()) {
+            g.fill(0, 0, w, h, 0xF4000000);
+        } else {
+            if (senses.leftEyeLost) g.fill(0, 0, w / 2, h, 0xF0000000);
+            if (senses.rightEyeLost) g.fill(w / 2, 0, w, h, 0xF0000000);
+        }
+        float flash = com.fleshbone.client.ClientEpisodes.flash();
+        if (flash > 0f) g.fill(0, 0, w, h, color(0xFFFFFF, flash * 0.85f));
+        float hallucination = com.fleshbone.client.ClientEpisodes.hallucination();
+        if (hallucination > 0f) vignette(g, w, h, 0xD01010, hallucination * 0.8f);
+
         // Darkening is a gameplay signal, not decoration: never fully disabled
         float c = v.consciousness;
         if (c < ConsciousnessSystem.DARKENING) {
             float dark = c <= FULL_DARK ? 1f : Math.min(1f, (ConsciousnessSystem.DARKENING - c) * 0.021f);
             g.fill(0, 0, w, h, color(0x000000, dark * Math.max(0.6f, Math.min(1f, intensity))));
         }
-        if (c < ConsciousnessSystem.UNCONSCIOUS) {
+        boolean asleep = body.needs.asleep || mc.player.isSleeping();
+        if (asleep && !v.cardiacArrest) {
+            g.centeredText(mc.font, Component.translatable("fleshbone.screen.asleep",
+                    com.fleshbone.client.hud.Words.format(body.needs.energy, 0)), w / 2, h / 2 - 10, 0xFF8090B0);
+            if (body.needs.asleep) {
+                g.centeredText(mc.font, Component.translatable("fleshbone.screen.asleep.hint",
+                        com.fleshbone.client.FBKeys.SLEEP.get().getTranslatedKeyMessage()), w / 2, h / 2 + 4, 0xFF505868);
+            }
+        } else if (c < ConsciousnessSystem.UNCONSCIOUS) {
             Component title = Component.translatable(v.cardiacArrest ? "fleshbone.screen.dying" : "fleshbone.screen.unconscious");
             int color = v.cardiacArrest ? 0xFF8A1010 : 0xFF707070;
             g.centeredText(mc.font, title, w / 2, h / 2 - 10, color);
             if (v.cardiacArrest) {
                 g.centeredText(mc.font, Component.translatable("fleshbone.screen.dying.hint"), w / 2, h / 2 + 4, 0xFF505050);
             }
+        }
+        if (v.lastStand > 0f) {
+            g.centeredText(mc.font, Component.translatable("fleshbone.screen.last_stand", com.fleshbone.client.hud.Words.duration(v.lastStand)),
+                    w / 2, 30, Math.sin(com.fleshbone.client.ClientBody.time() * 6.0) > 0 ? 0xFFFFD040 : 0xFFFF8020);
         }
     }
 

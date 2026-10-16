@@ -27,7 +27,7 @@ class InfectionTest {
         Random rng = new Random(seed);
         float t = 0f;
         while (t < seconds) {
-            body.tick(env, SimSettings.DEFAULT, rng);
+            body.tick(env, SimTestUtil.SETTINGS, rng);
             t += env.dt;
         }
         return body.part(BodyPart.FOREARM_L).infection;

@@ -68,6 +68,10 @@ public final class FBGameTests {
         test("shocking_a_healthy_heart_is_dangerous", FBGameTests::shockingAHealthyHeartIsDangerous);
         test("data_maps_load_and_campfires_warm", FBGameTests::dataMapsLoadAndCampfiresWarm);
         test("clerics_sell_medical_supplies", FBGameTests::clericsSellMedicalSupplies);
+        test("meals_feed_hunger_and_weight", FBGameTests::mealsFeedHungerAndWeight);
+        test("carried_weight_counts_the_inventory", FBGameTests::carriedWeightCountsTheInventory);
+        test("push_ups_train_strength", FBGameTests::pushUpsTrainStrength);
+        test("sleeping_on_the_ground_and_pain_wakes", FBGameTests::sleepingOnTheGroundAndPainWakes);
     }
 
     private FBGameTests() {}
@@ -298,13 +302,17 @@ public final class FBGameTests {
 
     private static void dataMapsLoadAndCampfiresWarm(GameTestHelper helper) {
         helper.assertTrue(new ItemStack(Items.POTION).getData(com.fleshbone.data.FBDataMaps.DRINKS) != null, "drinks data map loaded");
-        helper.assertTrue(new ItemStack(Items.ROTTEN_FLESH).getData(com.fleshbone.data.FBDataMaps.FOOD_EFFECTS) != null, "food effects loaded");
+        helper.assertTrue(new ItemStack(Items.ROTTEN_FLESH).getData(com.fleshbone.data.FBDataMaps.NUTRITION) != null, "nutrition loaded");
+        helper.assertTrue(new ItemStack(Items.ANVIL).getData(com.fleshbone.data.FBDataMaps.ITEM_WEIGHTS) != null, "item weights loaded");
         helper.assertTrue(new ItemStack(Items.LEATHER_CHESTPLATE).getData(com.fleshbone.data.FBDataMaps.INSULATION) != null, "insulation loaded");
         net.minecraft.core.BlockPos fire = helper.absolutePos(new net.minecraft.core.BlockPos(1, 1, 1));
-        float before = com.fleshbone.event.EnvironmentSampler.heatAround(helper.getLevel(), fire.above());
+        com.fleshbone.attach.BodyRuntime runtime = new com.fleshbone.attach.BodyRuntime();
+        com.fleshbone.event.EnvironmentSampler.heatAround(helper.getLevel(), fire.above(), runtime);
+        float before = runtime.heatStrength;
         helper.setBlock(new net.minecraft.core.BlockPos(1, 1, 1), net.minecraft.world.level.block.Blocks.CAMPFIRE);
-        float after = com.fleshbone.event.EnvironmentSampler.heatAround(helper.getLevel(), fire.above());
-        helper.assertTrue(after > before + 5f, "a lit campfire warms the air around it: " + before + " -> " + after);
+        com.fleshbone.event.EnvironmentSampler.heatAround(helper.getLevel(), fire.above(), runtime);
+        helper.assertTrue(runtime.heatStrength > before + 0.3f && runtime.heatTarget > 30f,
+                "a lit campfire warms the air around it: " + before + " -> " + runtime.heatStrength + " toward " + runtime.heatTarget);
         helper.succeed();
     }
 
@@ -316,6 +324,87 @@ public final class FBGameTests {
         boolean tagged = trades.get(tag).map(set -> set.stream().anyMatch(h -> h.is(bandage))).orElse(false);
         helper.assertTrue(tagged, "and offered by level 1 clerics");
         helper.succeed();
+    }
+
+    /** A steak goes into the C:U hunger (5 per food point + 1.5 per saturation point) and onto the scales. */
+    private static void mealsFeedHungerAndWeight(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            Body body = player.getData(FBAttachments.BODY);
+            body.needs.hunger = 40f;
+            float weight = body.needs.weight;
+            ItemStack steak = new ItemStack(Items.COOKED_BEEF);
+            ItemStack left = steak.finishUsingItem(helper.getLevel(), player);
+            net.neoforged.neoforge.event.EventHooks.onItemUseFinish(player, new ItemStack(Items.COOKED_BEEF), 0, left);
+            helper.assertTrue(body.needs.hunger > 95f && body.needs.hunger < 101f, "8 food + 12.8 saturation -> about 59 hunger: " + body.needs.hunger);
+            helper.assertTrue(body.needs.weight > weight + 0.3f, "a meal puts on weight: " + weight + " -> " + body.needs.weight);
+            helper.runAfterDelay(2, () -> {
+                helper.assertTrue(player.getFoodData().getFoodLevel() == BodyTicker.LOCKED_FOOD, "the vanilla food bar stays locked");
+                helper.assertTrue(body.needs.hunger < 101f, "the meal is not counted twice: " + body.needs.hunger);
+                remove(player);
+                helper.succeed();
+            });
+        });
+    }
+
+    /** Armor, an anvil and a stack of cobblestone weigh what they should and overload the body. */
+    private static void carriedWeightCountsTheInventory(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        player.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
+        player.getInventory().add(new ItemStack(Items.ANVIL));
+        player.getInventory().add(new ItemStack(Items.COBBLESTONE, 64));
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            BodyTicker.tickPlayer(player);
+            Body body = player.getData(FBAttachments.BODY);
+            float expected = 25f + 0.3f + 0.6f * 6f + 64 * com.fleshbone.data.ItemWeights.BLOCK;
+            helper.assertTrue(Math.abs(body.needs.carried - expected) < 0.5f, "carried " + body.needs.carried + " kg, expected " + expected);
+            helper.assertTrue(body.derived.overload > 0.1f, "past 25 kg the body is overloaded: " + body.derived.overload);
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** Push-ups from the health panel: strength experience, stamina spent, lying pose. */
+    private static void pushUpsTrainStrength(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            player.setOnGround(true);
+            com.fleshbone.effect.GameplayEffects.startExercise(player, com.fleshbone.sim.Environment.Exercise.PUSHUPS);
+            for (int tick = 0; tick < 40; tick++) BodyTicker.tickPlayer(player);
+            {
+                Body body = player.getData(FBAttachments.BODY);
+                helper.assertTrue(body.needs.exercise == com.fleshbone.sim.Environment.Exercise.PUSHUPS.ordinal(), "working out");
+                helper.assertTrue(body.skills.xp(com.fleshbone.sim.Skills.Stat.STRENGTH) > 0.7f,
+                        "0.5 strength XP a second: " + body.skills.xp(com.fleshbone.sim.Skills.Stat.STRENGTH));
+                helper.assertTrue(body.needs.stamina < 99f, "push-ups cost stamina: " + body.needs.stamina);
+                helper.assertTrue(player.getForcedPose() == net.minecraft.world.entity.Pose.SWIMMING, "lying down for push-ups");
+                com.fleshbone.effect.GameplayEffects.startExercise(player, com.fleshbone.sim.Environment.Exercise.NONE);
+                remove(player);
+                helper.succeed();
+            }
+        });
+    }
+
+    /** A tired body lies down where it stands; pain wakes it up. */
+    private static void sleepingOnTheGroundAndPainWakes(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            Body body = player.getData(FBAttachments.BODY);
+            com.fleshbone.effect.GameplayEffects.trySleep(player);
+            helper.assertTrue(!body.needs.asleep, "not tired: no sleep");
+            body.needs.energy = 30f;
+            com.fleshbone.effect.GameplayEffects.trySleep(player);
+            helper.assertTrue(body.needs.asleep, "tired: falls asleep on the ground");
+            for (int tick = 0; tick < 20; tick++) BodyTicker.tickPlayer(player);
+            helper.assertTrue(body.needs.energy > 30f, "sleep restores energy: " + body.needs.energy);
+            helper.assertTrue(body.derived.consciousnessCap <= 10f && body.vitals.consciousness < 100f, "asleep: consciousness sinks toward 10 %");
+            body.part(BodyPart.FOREARM_L).pain = 70f;
+            body.derived.compute(body);
+            BodyTicker.tickPlayer(player);
+            helper.assertTrue(!body.needs.asleep, "pain wakes the body up");
+            remove(player);
+            helper.succeed();
+        });
     }
 
     // ------------------------------------------------------------------------------------------------ helpers

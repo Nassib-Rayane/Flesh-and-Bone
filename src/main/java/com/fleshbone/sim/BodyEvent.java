@@ -25,10 +25,32 @@ public record BodyEvent(Type type, BodyPart part) {
         LIMB_NUMB,
         INFECTION_NOTICED,
         SEPSIS,
+        /** A vomiting fit starts (the stomach empties when it ends). */
         VOMITED,
+        VOMITED_BLOOD,
         AMPUTATED,
         STROKE,
         TRANSFUSION_REACTION,
-        PASSED_OUT_TIRED
+        PASSED_OUT_TIRED,
+        /** Ran out of stamina and collapsed. */
+        COLLAPSED,
+        STARVING,
+        OVERATE,
+        FELL_ASLEEP,
+        /** Woken up by pain, cold, nausea... (as opposed to waking up rested). */
+        WOKEN_UP,
+        RESTED,
+        LAST_STAND,
+        EYE_LOST,
+        EARS_RINGING,
+        // Brain damage episodes (below 95 % brain health)
+        BRAIN_HALLUCINATION,
+        BRAIN_MIRRORED,
+        BRAIN_DROP,
+        BRAIN_SHAKE,
+        BRAIN_FLASH,
+        STRENGTH_UP,
+        RESILIENCE_UP,
+        INTELLIGENCE_UP
     }
 }

@@ -1,0 +1,547 @@
+{
+  "values": {
+    "minecraft:iron_block": {
+      "weight": 7
+    },
+    "minecraft:gold_block": {
+      "weight": 12
+    },
+    "minecraft:copper_block": {
+      "weight": 6
+    },
+    "minecraft:netherite_block": {
+      "weight": 15
+    },
+    "minecraft:diamond_block": {
+      "weight": 3.5
+    },
+    "minecraft:emerald_block": {
+      "weight": 3
+    },
+    "minecraft:lapis_block": {
+      "weight": 2.5
+    },
+    "minecraft:redstone_block": {
+      "weight": 2.5
+    },
+    "minecraft:coal_block": {
+      "weight": 1.5
+    },
+    "minecraft:raw_iron_block": {
+      "weight": 6
+    },
+    "minecraft:raw_gold_block": {
+      "weight": 9
+    },
+    "minecraft:raw_copper_block": {
+      "weight": 6
+    },
+    "minecraft:anvil": {
+      "weight": 25
+    },
+    "minecraft:chipped_anvil": {
+      "weight": 24
+    },
+    "minecraft:damaged_anvil": {
+      "weight": 23
+    },
+    "minecraft:obsidian": {
+      "weight": 2
+    },
+    "minecraft:crying_obsidian": {
+      "weight": 2
+    },
+    "minecraft:ancient_debris": {
+      "weight": 2.5
+    },
+    "minecraft:lodestone": {
+      "weight": 8
+    },
+    "minecraft:respawn_anchor": {
+      "weight": 6
+    },
+    "minecraft:beacon": {
+      "weight": 4
+    },
+    "minecraft:enchanting_table": {
+      "weight": 6
+    },
+    "minecraft:cauldron": {
+      "weight": 4
+    },
+    "minecraft:hopper": {
+      "weight": 3
+    },
+    "minecraft:chest": {
+      "weight": 1.2
+    },
+    "minecraft:trapped_chest": {
+      "weight": 1.3
+    },
+    "minecraft:barrel": {
+      "weight": 1.2
+    },
+    "minecraft:ender_chest": {
+      "weight": 2
+    },
+    "minecraft:furnace": {
+      "weight": 1.2
+    },
+    "minecraft:blast_furnace": {
+      "weight": 2
+    },
+    "minecraft:smoker": {
+      "weight": 1.2
+    },
+    "minecraft:crafting_table": {
+      "weight": 0.8
+    },
+    "minecraft:smithing_table": {
+      "weight": 1.5
+    },
+    "minecraft:grindstone": {
+      "weight": 2
+    },
+    "minecraft:stonecutter": {
+      "weight": 1.5
+    },
+    "minecraft:bell": {
+      "weight": 3
+    },
+    "minecraft:heavy_core": {
+      "weight": 10
+    },
+    "minecraft:tnt": {
+      "weight": 0.5
+    },
+    "minecraft:lectern": {
+      "weight": 1
+    },
+    "minecraft:bookshelf": {
+      "weight": 1.5
+    },
+    "minecraft:jukebox": {
+      "weight": 1.5
+    },
+    "minecraft:brewing_stand": {
+      "weight": 1
+    },
+    "minecraft:iron_bars": {
+      "weight": 0.2
+    },
+    "minecraft:iron_door": {
+      "weight": 3
+    },
+    "minecraft:iron_trapdoor": {
+      "weight": 1.5
+    },
+    "minecraft:rail": {
+      "weight": 0.2
+    },
+    "minecraft:powered_rail": {
+      "weight": 0.3
+    },
+    "minecraft:detector_rail": {
+      "weight": 0.3
+    },
+    "minecraft:activator_rail": {
+      "weight": 0.3
+    },
+    "minecraft:minecart": {
+      "weight": 6
+    },
+    "minecraft:chest_minecart": {
+      "weight": 7
+    },
+    "minecraft:hopper_minecart": {
+      "weight": 9
+    },
+    "minecraft:furnace_minecart": {
+      "weight": 7
+    },
+    "minecraft:tnt_minecart": {
+      "weight": 6.5
+    },
+    "minecraft:iron_ingot": {
+      "weight": 0.12
+    },
+    "minecraft:gold_ingot": {
+      "weight": 0.2
+    },
+    "minecraft:copper_ingot": {
+      "weight": 0.1
+    },
+    "minecraft:netherite_ingot": {
+      "weight": 0.3
+    },
+    "minecraft:netherite_scrap": {
+      "weight": 0.15
+    },
+    "minecraft:raw_iron": {
+      "weight": 0.12
+    },
+    "minecraft:raw_gold": {
+      "weight": 0.18
+    },
+    "minecraft:raw_copper": {
+      "weight": 0.1
+    },
+    "minecraft:iron_nugget": {
+      "weight": 0.01
+    },
+    "minecraft:gold_nugget": {
+      "weight": 0.02
+    },
+    "minecraft:diamond": {
+      "weight": 0.02
+    },
+    "minecraft:emerald": {
+      "weight": 0.02
+    },
+    "minecraft:coal": {
+      "weight": 0.05
+    },
+    "minecraft:charcoal": {
+      "weight": 0.04
+    },
+    "minecraft:arrow": {
+      "weight": 0.03
+    },
+    "minecraft:spectral_arrow": {
+      "weight": 0.03
+    },
+    "minecraft:tipped_arrow": {
+      "weight": 0.03
+    },
+    "minecraft:bucket": {
+      "weight": 0.6
+    },
+    "minecraft:water_bucket": {
+      "weight": 5
+    },
+    "minecraft:lava_bucket": {
+      "weight": 5
+    },
+    "minecraft:milk_bucket": {
+      "weight": 5
+    },
+    "minecraft:powder_snow_bucket": {
+      "weight": 3
+    },
+    "minecraft:cod_bucket": {
+      "weight": 5.3
+    },
+    "minecraft:salmon_bucket": {
+      "weight": 5.5
+    },
+    "minecraft:pufferfish_bucket": {
+      "weight": 5.2
+    },
+    "minecraft:tropical_fish_bucket": {
+      "weight": 5.2
+    },
+    "minecraft:axolotl_bucket": {
+      "weight": 5.3
+    },
+    "minecraft:tadpole_bucket": {
+      "weight": 5.1
+    },
+    "minecraft:glass_bottle": {
+      "weight": 0.2
+    },
+    "minecraft:experience_bottle": {
+      "weight": 0.3
+    },
+    "minecraft:bow": {
+      "weight": 0.8
+    },
+    "minecraft:crossbow": {
+      "weight": 2
+    },
+    "minecraft:trident": {
+      "weight": 2.5
+    },
+    "minecraft:mace": {
+      "weight": 4
+    },
+    "minecraft:shield": {
+      "weight": 4.5
+    },
+    "minecraft:fishing_rod": {
+      "weight": 0.4
+    },
+    "minecraft:shears": {
+      "weight": 0.3
+    },
+    "minecraft:flint_and_steel": {
+      "weight": 0.2
+    },
+    "minecraft:compass": {
+      "weight": 0.15
+    },
+    "minecraft:recovery_compass": {
+      "weight": 0.2
+    },
+    "minecraft:clock": {
+      "weight": 0.2
+    },
+    "minecraft:spyglass": {
+      "weight": 0.3
+    },
+    "minecraft:brush": {
+      "weight": 0.15
+    },
+    "minecraft:lead": {
+      "weight": 0.2
+    },
+    "minecraft:name_tag": {
+      "weight": 0.02
+    },
+    "minecraft:saddle": {
+      "weight": 4
+    },
+    "minecraft:elytra": {
+      "weight": 2
+    },
+    "minecraft:totem_of_undying": {
+      "weight": 0.4
+    },
+    "minecraft:book": {
+      "weight": 0.3
+    },
+    "minecraft:writable_book": {
+      "weight": 0.3
+    },
+    "minecraft:written_book": {
+      "weight": 0.3
+    },
+    "minecraft:enchanted_book": {
+      "weight": 0.3
+    },
+    "minecraft:map": {
+      "weight": 0.05
+    },
+    "minecraft:filled_map": {
+      "weight": 0.05
+    },
+    "minecraft:paper": {
+      "weight": 0.01
+    },
+    "minecraft:feather": {
+      "weight": 0.005
+    },
+    "minecraft:string": {
+      "weight": 0.005
+    },
+    "minecraft:stick": {
+      "weight": 0.02
+    },
+    "minecraft:bone": {
+      "weight": 0.1
+    },
+    "minecraft:leather": {
+      "weight": 0.1
+    },
+    "minecraft:rabbit_hide": {
+      "weight": 0.05
+    },
+    "minecraft:ender_pearl": {
+      "weight": 0.05
+    },
+    "minecraft:ender_eye": {
+      "weight": 0.06
+    },
+    "minecraft:blaze_rod": {
+      "weight": 0.1
+    },
+    "minecraft:slime_ball": {
+      "weight": 0.05
+    },
+    "minecraft:gunpowder": {
+      "weight": 0.02
+    },
+    "minecraft:redstone": {
+      "weight": 0.01
+    },
+    "minecraft:glowstone_dust": {
+      "weight": 0.01
+    },
+    "minecraft:sugar": {
+      "weight": 0.01
+    },
+    "minecraft:wheat": {
+      "weight": 0.02
+    },
+    "minecraft:wheat_seeds": {
+      "weight": 0.002
+    },
+    "minecraft:egg": {
+      "weight": 0.06
+    },
+    "minecraft:turtle_scute": {
+      "weight": 0.05
+    },
+    "minecraft:armadillo_scute": {
+      "weight": 0.05
+    },
+    "minecraft:nether_star": {
+      "weight": 0.2
+    },
+    "minecraft:heart_of_the_sea": {
+      "weight": 0.5
+    },
+    "minecraft:dragon_egg": {
+      "weight": 6
+    },
+    "minecraft:goat_horn": {
+      "weight": 0.4
+    },
+    "minecraft:music_disc_13": {
+      "weight": 0.15
+    },
+    "minecraft:bundle": {
+      "weight": 0.2
+    },
+    "minecraft:shulker_box": {
+      "weight": 2
+    },
+    "minecraft:white_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:orange_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:magenta_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:light_blue_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:yellow_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:lime_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:pink_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:gray_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:light_gray_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:cyan_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:purple_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:blue_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:brown_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:green_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:red_shulker_box": {
+      "weight": 2
+    },
+    "minecraft:black_shulker_box": {
+      "weight": 2
+    },
+    "fleshbone:rag": {
+      "weight": 0.02
+    },
+    "fleshbone:bandage": {
+      "weight": 0.05
+    },
+    "fleshbone:sterile_bandage": {
+      "weight": 0.06
+    },
+    "fleshbone:antiseptic": {
+      "weight": 0.25
+    },
+    "fleshbone:suture_kit": {
+      "weight": 0.15
+    },
+    "fleshbone:tweezers": {
+      "weight": 0.05
+    },
+    "fleshbone:tourniquet": {
+      "weight": 0.15
+    },
+    "fleshbone:ice_pack": {
+      "weight": 0.5
+    },
+    "fleshbone:splint": {
+      "weight": 0.4
+    },
+    "fleshbone:painkillers": {
+      "weight": 0.05
+    },
+    "fleshbone:morphine": {
+      "weight": 0.05
+    },
+    "fleshbone:antibiotics": {
+      "weight": 0.05
+    },
+    "fleshbone:bone_saw": {
+      "weight": 1.2
+    },
+    "fleshbone:defibrillator": {
+      "weight": 3.5
+    },
+    "fleshbone:epinephrine": {
+      "weight": 0.05
+    },
+    "fleshbone:antiarrhythmic": {
+      "weight": 0.05
+    },
+    "fleshbone:naloxone": {
+      "weight": 0.05
+    },
+    "fleshbone:procoagulant": {
+      "weight": 0.05
+    },
+    "fleshbone:thrombolytic": {
+      "weight": 0.05
+    },
+    "fleshbone:antivenom": {
+      "weight": 0.05
+    },
+    "fleshbone:empty_blood_bag": {
+      "weight": 0.05
+    },
+    "fleshbone:blood_bag": {
+      "weight": 0.55
+    },
+    "fleshbone:saline_bag": {
+      "weight": 0.55
+    },
+    "fleshbone:chest_drain": {
+      "weight": 0.3
+    },
+    "fleshbone:vitals_monitor": {
+      "weight": 0.8
+    },
+    "fleshbone:canteen": {
+      "weight": 1.2
+    },
+    "fleshbone:purified_water": {
+      "weight": 0.5
+    },
+    "fleshbone:coffee": {
+      "weight": 0.4
+    },
+    "fleshbone:empty_syringe": {
+      "weight": 0.02
+    },
+    "minecraft:iron_chain": {
+      "weight": 0.3
+    }
+  }
+}

@@ -18,6 +18,18 @@ public final class FBConfig {
     public static final ModConfigSpec.DoubleValue HEALING_SPEED;
     public static final ModConfigSpec.DoubleValue FRACTURE_HEAL_MINUTES;
     public static final ModConfigSpec.DoubleValue DISLOCATION_HEAL_MINUTES;
+    public static final ModConfigSpec.BooleanValue HEALTH_CHIP;
+    public static final ModConfigSpec.BooleanValue HUNGER;
+    public static final ModConfigSpec.DoubleValue HUNGER_SPEED;
+    public static final ModConfigSpec.DoubleValue THIRST_SPEED;
+    public static final ModConfigSpec.DoubleValue ENERGY_SPEED;
+    public static final ModConfigSpec.DoubleValue INFECTION_SPEED;
+    public static final ModConfigSpec.BooleanValue ENCUMBRANCE;
+    public static final ModConfigSpec.DoubleValue CARRY_CAPACITY;
+    public static final ModConfigSpec.DoubleValue ITEM_WEIGHT_SCALE;
+    public static final ModConfigSpec.BooleanValue KEEP_SKILLS_ON_DEATH;
+    public static final ModConfigSpec.BooleanValue LAST_STAND;
+    public static final ModConfigSpec.BooleanValue BRAIN_EPISODES;
     public static final ModConfigSpec.BooleanValue INFECTIONS;
     public static final ModConfigSpec.BooleanValue THIRST;
     public static final ModConfigSpec.BooleanValue TEMPERATURE;
@@ -34,6 +46,43 @@ public final class FBConfig {
         PAUSE_IN_CREATIVE = SERVER
                 .comment("Freeze the body simulation for players in creative or spectator mode.")
                 .define("pauseInCreative", true);
+        HEALTH_CHIP = SERVER
+                .comment("Everyone has a health chip: exact values (heart rate, pressure, temperature, weight...) are always shown.",
+                        "Set to false for a hardcore game where only a vitals monitor gives numbers and the body has to be read from symptoms.")
+                .define("healthChip", true);
+        SERVER.pop();
+
+        SERVER.push("needs");
+        HUNGER = SERVER
+                .comment("Casualties: Unknown hunger (0-125) and body weight replace the vanilla food bar. If false, vanilla hunger works as usual.")
+                .define("hunger", true);
+        HUNGER_SPEED = SERVER
+                .comment("Multiplier for hunger and weight loss. 1.0 = 2.6 points a minute like Casualties: Unknown.")
+                .defineInRange("hungerSpeed", 1.0, 0.0, 10.0);
+        THIRST_SPEED = SERVER
+                .comment("Multiplier for thirst. 1.0 = about 3.5 points a minute at rest.")
+                .defineInRange("thirstSpeed", 1.0, 0.0, 10.0);
+        ENERGY_SPEED = SERVER
+                .comment("Multiplier for sleepiness and sleep recovery. 1.0 = a full bar lasts about 24 minutes awake (Casualties: Unknown).")
+                .defineInRange("energySpeed", 1.0, 0.0, 10.0);
+        SERVER.pop();
+
+        SERVER.push("skills");
+        KEEP_SKILLS_ON_DEATH = SERVER
+                .comment("Strength, resilience and intelligence survive death.")
+                .define("keepSkillsOnDeath", true);
+        SERVER.pop();
+
+        SERVER.push("encumbrance");
+        ENCUMBRANCE = SERVER
+                .comment("Carried weight slows you down and tires you out past your capacity.")
+                .define("encumbrance", true);
+        CARRY_CAPACITY = SERVER
+                .comment("Kilograms an average body (strength and resilience 10, healthy weight, fed) carries without penalty.")
+                .defineInRange("carryCapacity", 25.0, 1.0, 1000.0);
+        ITEM_WEIGHT_SCALE = SERVER
+                .comment("Multiplier for every item weight (see the fleshbone:item_weights data map).")
+                .defineInRange("itemWeightScale", 1.0, 0.0, 10.0);
         SERVER.pop();
 
         SERVER.push("damage");
@@ -59,6 +108,11 @@ public final class FBConfig {
 
         SERVER.push("systems");
         INFECTIONS = SERVER.comment("Wounds can get infected, infections spread and cause sepsis.").define("infections", true);
+        INFECTION_SPEED = SERVER
+                .comment("Multiplier for infection growth. 1.0 = 7.2 % a minute at 100 % immunity (Casualties: Unknown).")
+                .defineInRange("infectionSpeed", 1.0, 0.0, 10.0);
+        LAST_STAND = SERVER.comment("A dying body may get one last stand per life, likelier in a good mood.").define("lastStand", true);
+        BRAIN_EPISODES = SERVER.comment("A damaged brain misfires: hallucinations, mirrored controls, dropped items...").define("brainEpisodes", true);
         THIRST = SERVER.comment("Thirst: drink water, or dehydrate.").define("thirst", true);
         TEMPERATURE = SERVER.comment("Body temperature follows the weather, biomes, heat sources and clothing.").define("temperature", true);
         ENERGY = SERVER.comment("Sleepiness: sleep, or pass out from exhaustion.").define("energy", true);
@@ -73,11 +127,14 @@ public final class FBConfig {
     // ---------------------------------------------------------------- CLIENT
     private static final ModConfigSpec.Builder CLIENT = new ModConfigSpec.Builder();
 
+    public enum UniHealthMode { FULL, COMPACT, HIDDEN }
+
+    public static final ModConfigSpec.EnumValue<UniHealthMode> UNI_HEALTH;
+    public static final ModConfigSpec.DoubleValue UNI_HEALTH_SCALE;
     public static final ModConfigSpec.DoubleValue HUD_SCALE;
     public static final ModConfigSpec.BooleanValue SHOW_BODY_DOLL;
     public static final ModConfigSpec.BooleanValue SHOW_MOODLES;
     public static final ModConfigSpec.IntValue MAX_MOODLES;
-    public static final ModConfigSpec.BooleanValue ALWAYS_SHOW_VITALS;
     public static final ModConfigSpec.DoubleValue SCREEN_EFFECTS;
     public static final ModConfigSpec.BooleanValue CAMERA_EFFECTS;
     public static final ModConfigSpec.BooleanValue BLUR;
@@ -87,6 +144,13 @@ public final class FBConfig {
 
     static {
         CLIENT.push("hud");
+        UNI_HEALTH = CLIENT
+                .comment("UNI-HEALTH readout in the top-left corner: FULL (every value and a limb), COMPACT (heart, pressure, oxygen, blood, temperature) or HIDDEN.",
+                        "The U key cycles through the modes in game.")
+                .defineEnum("uniHealth", UniHealthMode.FULL);
+        UNI_HEALTH_SCALE = CLIENT
+                .comment("Scale of the UNI-HEALTH readout on the HUD.")
+                .defineInRange("uniHealthScale", 0.75, 0.4, 2.0);
         HUD_SCALE = CLIENT
                 .comment("Scale of the body silhouette in the corner of the screen.")
                 .defineInRange("hudScale", 1.25, 0.5, 4.0);
@@ -99,9 +163,6 @@ public final class FBConfig {
         MAX_MOODLES = CLIENT
                 .comment("Maximum number of moodles shown on the HUD (the health panel lists them all).")
                 .defineInRange("maxMoodles", 10, 1, 40);
-        ALWAYS_SHOW_VITALS = CLIENT
-                .comment("Show exact vital signs (blood pressure, heart rate, SpO2...) without a vitals monitor.")
-                .define("alwaysShowVitals", false);
         PANEL_PAUSES_GAME = CLIENT
                 .comment("Pause single-player while the health panel is open. Casualties: Unknown keeps time running.")
                 .define("panelPausesGame", false);

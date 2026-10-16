@@ -64,24 +64,24 @@ public class ExtractMinigame extends MinigameScreen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    protected boolean click(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             tracker.grab((float) event.x(), (float) event.y(), time());
             return true;
         }
-        return super.mouseClicked(event, doubleClick);
+        return super.click(event, doubleClick);
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+    protected boolean drag(MouseButtonEvent event, double dx, double dy) {
         tracker.drag((float) event.x(), (float) event.y(), time());
         return true;
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
+    protected boolean release(MouseButtonEvent event) {
         tracker.release();
-        return super.mouseReleased(event);
+        return super.release(event);
     }
 
     @Override

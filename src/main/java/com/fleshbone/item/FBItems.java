@@ -43,6 +43,7 @@ public final class FBItems {
     public static final DeferredItem<MedicalItem> NALOXONE = medical("naloxone", p -> p.stacksTo(4), MedicalActions.naloxone());
     public static final DeferredItem<MedicalItem> PROCOAGULANT = medical("procoagulant", p -> p.stacksTo(4), MedicalActions.procoagulant());
     public static final DeferredItem<MedicalItem> THROMBOLYTIC = medical("thrombolytic", p -> p.stacksTo(4), MedicalActions.thrombolytic());
+    public static final DeferredItem<MedicalItem> ANTIVENOM = medical("antivenom", p -> p.stacksTo(4), MedicalActions.antivenom());
     public static final DeferredItem<MedicalItem> EMPTY_BLOOD_BAG = medical("empty_blood_bag", p -> p.stacksTo(8), MedicalActions.emptyBloodBag());
     public static final DeferredItem<BloodBagItem> BLOOD_BAG = ITEMS.registerItem("blood_bag",
             p -> new BloodBagItem(p, MedicalActions.bloodBag()), p -> p.stacksTo(1));

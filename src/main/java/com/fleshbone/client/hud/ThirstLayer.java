@@ -28,6 +28,8 @@ public final class ThirstLayer implements GuiLayer {
         int right = g.guiWidth() / 2 + 91;
         int top = g.guiHeight() - mc.gui.rightHeight;
         float thirst = Math.min(100f, body.needs.thirst);
+        // Past 100 (slaked) the drops get a pale rim, one per 15 points
+        int overflow = Math.max(0, Math.min(10, Math.round((body.needs.thirst - 100f) / 15f)));
         float shake = body.needs.thirst < 20f ? (float) Math.sin(ClientBody.time() * 20.0) : 0f;
         for (int i = 0; i < 10; i++) {
             // Rightmost drop is the first to fill, as with hunger
@@ -35,6 +37,7 @@ public final class ThirstLayer implements GuiLayer {
             int x = right - 8 - i * 8;
             int y = top + 2 + Math.round(shake);
             drawDrop(g, x, y, fill);
+            if (i < overflow) g.fill(x + 1, y - 1, x + 4, y, 0xFFB8E8FF);
         }
         mc.gui.rightHeight += 10;
     }

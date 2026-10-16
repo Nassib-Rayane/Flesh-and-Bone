@@ -32,6 +32,16 @@ public final class FBNetwork {
         registrar.playToClient(FBPayloads.PatientBody.TYPE, FBPayloads.PatientBody.STREAM_CODEC);
         registrar.playToClient(FBPayloads.PatientGone.TYPE, FBPayloads.PatientGone.STREAM_CODEC);
         registrar.playToClient(FBPayloads.Thought.TYPE, FBPayloads.Thought.STREAM_CODEC);
+        registrar.playToClient(FBPayloads.Episode.TYPE, FBPayloads.Episode.STREAM_CODEC);
+        registrar.playToServer(FBPayloads.Sleep.TYPE, FBPayloads.Sleep.STREAM_CODEC,
+                (payload, context) -> com.fleshbone.effect.GameplayEffects.trySleep((ServerPlayer) context.player()));
+        registrar.playToServer(FBPayloads.Exercise.TYPE, FBPayloads.Exercise.STREAM_CODEC, FBNetwork::onExercise);
+    }
+
+    private static void onExercise(FBPayloads.Exercise payload, IPayloadContext context) {
+        com.fleshbone.sim.Environment.Exercise[] values = com.fleshbone.sim.Environment.Exercise.VALUES;
+        if (payload.exercise() < 0 || payload.exercise() >= values.length) return;
+        com.fleshbone.effect.GameplayEffects.startExercise((ServerPlayer) context.player(), values[payload.exercise()]);
     }
 
     private static BodyPart part(int index) {

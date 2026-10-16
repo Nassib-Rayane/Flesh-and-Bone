@@ -49,7 +49,8 @@ public final class BodyHudLayer implements GuiLayer {
             BodyDoll.draw(graphics, body, 4, dollY, scale, null, time);
             monitorX += Math.round(BodyDoll.GRID_W * scale) + 4;
         }
-        if (ClientBody.vitalsVisible(mc.player)) {
+        // The small monitor stands in for the UNI-HEALTH readout when it is hidden
+        if (FBConfig.UNI_HEALTH.get() == FBConfig.UniHealthMode.HIDDEN && ClientBody.vitalsVisible(mc.player)) {
             VitalsMonitor.draw(graphics, mc.font, body, monitorX, graphics.guiHeight() - VitalsMonitor.HEIGHT - 4, time);
         }
     }

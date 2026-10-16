@@ -1,6 +1,7 @@
 package com.fleshbone.attach;
 
 import com.fleshbone.damage.DamageClassifier;
+import com.fleshbone.sim.Environment;
 
 import net.minecraft.world.damagesource.DamageSource;
 
@@ -30,13 +31,21 @@ public final class BodyRuntime {
     public float appliedMining = 1f;
     public float appliedSafeFall;
     public boolean forcedPose;
+    /** The vanilla food bar is held at 19 while the C:U hunger runs; false until the first locked tick. */
+    public boolean foodLocked;
+    /** Workout chosen from the health panel. */
+    public Environment.Exercise exercise = Environment.Exercise.NONE;
     // Environment sampled once a second
     public long lastSampleTick = -1;
     public float ambientTemp = 20f;
-    public float heatSource;
+    public float heatTarget = 20f;
+    public float heatStrength;
     public float insulation;
     public int light = 15;
     public boolean skyVisible = true;
     public boolean comfort;
-    public float armorWeight;
+    /** Kilograms carried. */
+    public float load;
+    /** Quality of the ground for a sleep, 0–4. */
+    public int sleepQuality = 1;
 }

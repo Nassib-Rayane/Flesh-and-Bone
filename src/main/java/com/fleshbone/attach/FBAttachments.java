@@ -62,6 +62,26 @@ public final class FBAttachments {
                     })
                     .build());
 
+    /** Items crafted once and depth reached, for intelligence experience. Saved, kept on death, never synced. */
+    public static final Supplier<AttachmentType<Knowledge>> KNOWLEDGE = ATTACHMENT_TYPES.register("knowledge", () ->
+            AttachmentType.builder(Knowledge::new)
+                    .serialize(new IAttachmentSerializer<Knowledge>() {
+                        @Override
+                        public Knowledge read(IAttachmentHolder holder, ValueInput input) {
+                            Knowledge knowledge = new Knowledge();
+                            knowledge.load(input);
+                            return knowledge;
+                        }
+
+                        @Override
+                        public boolean write(Knowledge knowledge, ValueOutput output) {
+                            knowledge.save(output);
+                            return true;
+                        }
+                    })
+                    .copyOnDeath()
+                    .build());
+
     /** Transient server-side helper state. */
     public static final Supplier<AttachmentType<BodyRuntime>> RUNTIME = ATTACHMENT_TYPES.register("body_runtime", () ->
             AttachmentType.builder(BodyRuntime::new).build());

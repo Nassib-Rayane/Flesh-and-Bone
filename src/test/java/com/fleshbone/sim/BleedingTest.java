@@ -89,12 +89,14 @@ class BleedingTest {
         body.vitals.bloodVolume = 4.5f;
         SimTestUtil.run(body, SimTestUtil.env(), 5 * 60f);
         assertTrue(body.vitals.bloodVolume > 4.7f, "about 0.26 L in 5 minutes, got " + body.vitals.bloodVolume);
-        assertTrue(body.exhaustionDebt > 0f, "regeneration costs food");
+        Body intact = SimTestUtil.body();
+        SimTestUtil.run(intact, SimTestUtil.env(), 5 * 60f);
+        assertTrue(body.needs.hunger < intact.needs.hunger - 5f, "new blood costs food: " + body.needs.hunger + " vs " + intact.needs.hunger);
 
         Body starving = SimTestUtil.body();
         starving.vitals.bloodVolume = 4.5f;
+        starving.needs.hunger = 0f;
         Environment env = SimTestUtil.env();
-        env.foodLevel = 0;
         SimTestUtil.run(starving, env, 5 * 60f);
         assertEquals(4.5f, starving.vitals.bloodVolume, 1e-3, "no regeneration while starving");
     }

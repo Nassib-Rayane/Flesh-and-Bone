@@ -42,7 +42,18 @@ public final class TreatmentService {
             medic.sendOverlayMessage(Component.translatable("fleshbone.message.cannot_apply"));
             return false;
         }
+        // A miserable body may not bother treating itself (Casualties: Unknown's mood refusals)
+        Body medicBody = medic.getData(FBAttachments.BODY);
+        if (medic == patient && ThreadLocalRandom.current().nextFloat() < com.fleshbone.sim.system.MindSystem.refusalChance(medicBody.mind.mood)) {
+            medic.sendOverlayMessage(Component.translatable("fleshbone.message.refuse_treat"));
+            return false;
+        }
+        // A clever medic does better work
+        quality = Math.max(0f, Math.min(1f, quality + com.fleshbone.sim.system.SkillSystem.treatmentBonus(medicBody.skills)));
         MedicalAction.Result result = action.apply(body, part, quality, amount, ThreadLocalRandom.current(), stack, patient);
+        if (result.success() && BodyTicker.simulated(medic)) {
+            com.fleshbone.sim.system.SkillSystem.gain(medicBody, com.fleshbone.sim.Skills.Stat.INTELLIGENCE, 3f + 4f * quality);
+        }
         if (result.uses() > 0) {
             if (stack.isDamageableItem()) stack.hurtAndBreak(result.uses(), medic.level(), medic, broken -> { });
             else stack.shrink(1);
@@ -69,11 +80,13 @@ public final class TreatmentService {
             case RESET_DISLOCATION -> {
                 if (!Treatments.canReset(s)) return;
                 Treatments.ResetResult result = Treatments.resetDislocation(body, part, quality, ThreadLocalRandom.current());
+                if (result == Treatments.ResetResult.SUCCESS) learn(medic, 5f);
                 medic.sendOverlayMessage(Component.translatable("fleshbone.message.reset." + result.name().toLowerCase(java.util.Locale.ROOT)));
             }
             case PULL_SHRAPNEL -> {
                 if (!Treatments.canExtract(s)) return;
                 boolean ok = Treatments.extractShrapnel(body, part, quality, false, ThreadLocalRandom.current());
+                if (ok) learn(medic, 5f);
                 medic.sendOverlayMessage(Component.translatable(ok ? "fleshbone.message.extract_ok" : "fleshbone.message.extract_failed"));
             }
         }
@@ -116,6 +129,12 @@ public final class TreatmentService {
         if (!giveBack.isEmpty() && !medic.getInventory().add(giveBack)) medic.drop(giveBack, false);
         body.derived.compute(body);
         markChanged(medic, patient);
+    }
+
+    private static void learn(ServerPlayer medic, float xp) {
+        if (BodyTicker.simulated(medic)) {
+            com.fleshbone.sim.system.SkillSystem.gain(medic.getData(FBAttachments.BODY), com.fleshbone.sim.Skills.Stat.INTELLIGENCE, xp);
+        }
     }
 
     private static void markChanged(ServerPlayer medic, ServerPlayer patient) {

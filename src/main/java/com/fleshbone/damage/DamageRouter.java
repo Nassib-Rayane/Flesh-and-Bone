@@ -86,6 +86,10 @@ public final class DamageRouter {
         if (FBConfig.PER_PART_ARMOR.get()) injuries = PartArmor.reduce(player, source, injuries, scale);
         body.injureAll(injuries, ThreadLocalRandom.current());
         plan.sideEffects(body, severity);
+        // Falls survived toughen (Casualties: Unknown's landing experience)
+        if (plan.mode() == DamageClassifier.Mode.FALL) {
+            com.fleshbone.sim.system.SkillSystem.gain(body, com.fleshbone.sim.Skills.Stat.RESILIENCE, Math.min(10f, severity / 10f));
+        }
         if (plan.suffocates()) runtime.suffocationTicks = 20;
         runtime.dirty = true;
     }

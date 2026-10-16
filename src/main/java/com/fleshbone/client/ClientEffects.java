@@ -41,7 +41,7 @@ public final class ClientEffects {
         if (v.brainHealth < 80f) sway += (80f - v.brainHealth) / 80f * 6f;
         float roll = (float) (Math.sin(t * 0.9) * sway + Math.sin(t * 2.3) * sway * 0.3);
 
-        float shake = 0f;
+        float shake = com.fleshbone.client.ClientEpisodes.shake();
         float pain = body.derived.totalPain;
         if (pain > 55f) shake += (pain - 55f) / 45f * 0.6f;
         if (v.bodyTemp < 34.5f) shake += Math.min(1.2f, (34.5f - v.bodyTemp) * 0.4f);
@@ -73,7 +73,9 @@ public final class ClientEffects {
     }
 
     private static void updateBlur(GameRenderer renderer, Body body) {
-        boolean want = body != null && FBConfig.BLUR.get() && body.vitals.consciousness < ConsciousnessSystem.FAINTING;
+        // Fainting blurs the view, and so does a damaged brain (below 80 %, as in Casualties: Unknown)
+        boolean want = body != null && FBConfig.BLUR.get()
+                && (body.vitals.consciousness < ConsciousnessSystem.FAINTING || body.vitals.brainHealth < com.fleshbone.sim.system.BrainSystem.BLURRED);
         if (want && !blurActive && renderer.currentPostEffect() == null) {
             renderer.setPostEffect(BLUR);
             blurActive = true;

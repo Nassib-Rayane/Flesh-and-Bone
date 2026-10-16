@@ -1,6 +1,6 @@
 package com.fleshbone.sim;
 
-/** Drug concentrations (0–100). Each one decays exponentially with its own half-life. */
+/** Drug and toxin concentrations (0–100). Each one decays exponentially with its own half-life. */
 public final class Chemistry {
     public static final float OPIATE_HALF_LIFE = 480f;
     public static final float ANALGESIC_HALF_LIFE = 300f;
@@ -11,13 +11,13 @@ public final class Chemistry {
     public static final float ANTIBIOTIC_HALF_LIFE = 900f;
     public static final float CAFFEINE_HALF_LIFE = 900f;
     public static final float NALOXONE_HALF_LIFE = 240f;
+    public static final float VENOM_HALF_LIFE = 360f;
+    public static final float ANTIVENOM_HALF_LIFE = 600f;
 
-    /** Opioids (morphine): strong analgesia, respiratory depression. Overdose above 80. */
+    /** Opioids (morphine) in the blood. What the body feels is the reception: this minus the tolerance. */
     public float opiate;
-    /** Built up by repeated opioid use; raises the dose needed for the same effect. */
+    /** Follows the opioid level up quickly and down slowly; above the level, the gap is withdrawal. */
     public float opiateTolerance;
-    /** Physical dependence: withdrawal when opiates drop while this is high. */
-    public float opiateDependence;
     /** Mild painkillers. */
     public float analgesic;
     public float epinephrine;
@@ -27,6 +27,14 @@ public final class Chemistry {
     public float antibiotic;
     public float caffeine;
     public float naloxone;
+    /** Venom from spiders and stings: thins the blood, starves it of oxygen, sickens. */
+    public float venom;
+    public float antivenom;
+
+    /** Opioid reception: positive = relief and sedation, negative = withdrawal. */
+    public float opiateReception() {
+        return opiate - opiateTolerance;
+    }
 
     public void decay(float dt) {
         opiate = decay(opiate, OPIATE_HALF_LIFE, dt);
@@ -38,6 +46,8 @@ public final class Chemistry {
         antibiotic = decay(antibiotic, ANTIBIOTIC_HALF_LIFE, dt);
         caffeine = decay(caffeine, CAFFEINE_HALF_LIFE, dt);
         naloxone = decay(naloxone, NALOXONE_HALF_LIFE, dt);
+        venom = decay(venom, VENOM_HALF_LIFE, dt);
+        antivenom = decay(antivenom, ANTIVENOM_HALF_LIFE, dt);
     }
 
     static float decay(float value, float halfLife, float dt) {
@@ -46,15 +56,14 @@ public final class Chemistry {
     }
 
     public void reset() {
-        opiate = opiateTolerance = opiateDependence = analgesic = 0f;
+        opiate = opiateTolerance = analgesic = 0f;
         epinephrine = antiarrhythmic = procoagulant = thrombolytic = 0f;
-        antibiotic = caffeine = naloxone = 0f;
+        antibiotic = caffeine = naloxone = venom = antivenom = 0f;
     }
 
     public void visit(StateVisitor v) {
         opiate = v.f("opiate", opiate);
         opiateTolerance = v.f("opiate_tolerance", opiateTolerance);
-        opiateDependence = v.f("opiate_dependence", opiateDependence);
         analgesic = v.f("analgesic", analgesic);
         epinephrine = v.f("epinephrine", epinephrine);
         antiarrhythmic = v.f("antiarrhythmic", antiarrhythmic);
@@ -63,5 +72,7 @@ public final class Chemistry {
         antibiotic = v.f("antibiotic", antibiotic);
         caffeine = v.f("caffeine", caffeine);
         naloxone = v.f("naloxone", naloxone);
+        venom = v.f("venom", venom);
+        antivenom = v.f("antivenom", antivenom);
     }
 }

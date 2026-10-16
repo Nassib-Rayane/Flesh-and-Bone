@@ -12,29 +12,40 @@ import com.fleshbone.sim.system.ChemistrySystem;
 import com.fleshbone.sim.system.CirculationSystem;
 import com.fleshbone.sim.system.ConsciousnessSystem;
 import com.fleshbone.sim.system.HealingSystem;
+import com.fleshbone.sim.system.HungerSystem;
 import com.fleshbone.sim.system.HygieneSystem;
 import com.fleshbone.sim.system.InfectionSystem;
-import com.fleshbone.sim.system.MetabolismSystem;
+import com.fleshbone.sim.system.LastStand;
 import com.fleshbone.sim.system.MindSystem;
 import com.fleshbone.sim.system.PainSystem;
 import com.fleshbone.sim.system.RespirationSystem;
+import com.fleshbone.sim.system.SensesSystem;
+import com.fleshbone.sim.system.SicknessSystem;
+import com.fleshbone.sim.system.SkillSystem;
+import com.fleshbone.sim.system.SleepSystem;
+import com.fleshbone.sim.system.StaminaSystem;
 import com.fleshbone.sim.system.TemperatureSystem;
+import com.fleshbone.sim.system.ThirstSystem;
 
 /**
  * The whole simulated body. Pure Java: the game feeds it an {@link Environment} every tick and reads back its state,
  * derived values and events.
+ *
+ * <p>Each tick runs the systems in causal order: drugs, pain, blood, muscles, heart and vessels, lungs, brain,
+ * infections, skin, heat, food, water, nausea, sleep, healing, then the mind and consciousness, which read everything
+ * else. Values that several systems read (immunity, stamina cap, pain, encumbrance) live in {@link Derived}.
  */
 public final class Body {
-    public static final int DATA_VERSION = 1;
+    public static final int DATA_VERSION = 2;
 
     private final PartState[] parts = new PartState[BodyPart.COUNT];
     public final Vitals vitals = new Vitals();
     public final Needs needs = new Needs();
     public final Mind mind = new Mind();
     public final Chemistry chem = new Chemistry();
+    public final Skills skills = new Skills();
+    public final Senses senses = new Senses();
     public final Derived derived = new Derived();
-    /** Vanilla food exhaustion owed by healing and blood regeneration, drained by the game each tick. */
-    public float exhaustionDebt;
     private final List<BodyEvent> events = new ArrayList<>();
 
     public Body() {
@@ -63,22 +74,31 @@ public final class Body {
     public void tick(Environment env, SimSettings settings, RandomGenerator rng) {
         float dt = env.dt;
         if (dt <= 0f) return;
+        needs.carried = env.load;
+        needs.exercise = env.exercise.ordinal();
         derived.compute(this);
         ChemistrySystem.tick(this, dt, settings.drugs());
         PainSystem.decay(this, dt);
-        BleedingSystem.tick(this, env, dt);
+        BleedingSystem.tick(this, env, settings, dt);
+        StaminaSystem.tick(this, env, settings, dt);
         CirculationSystem.tick(this, env, dt, rng);
         RespirationSystem.tick(this, env, dt);
-        BrainSystem.tick(this, dt);
-        if (settings.infection()) InfectionSystem.tick(this, env, dt, rng);
+        BrainSystem.tick(this, env, dt, rng);
+        if (settings.infection()) InfectionSystem.tick(this, env, settings, dt, rng);
         HygieneSystem.tick(this, env, dt);
-        TemperatureSystem.tick(this, env, settings.temperature(), dt);
-        MetabolismSystem.tick(this, env, settings, dt, rng);
+        TemperatureSystem.tick(this, env, settings, dt);
+        HungerSystem.tick(this, env, settings, dt);
+        ThirstSystem.tick(this, env, settings, dt);
+        SicknessSystem.tick(this, env, dt, rng);
+        SleepSystem.tick(this, env, settings, dt);
+        SensesSystem.tick(this, dt);
         HealingSystem.tick(this, env, settings, dt);
         derived.compute(this);
         PainSystem.tickShock(this, dt);
         MindSystem.tick(this, env, settings, dt);
+        if (settings.lastStand()) LastStand.tick(this, dt, rng);
         ConsciousnessSystem.tick(this, env, dt);
+        SkillSystem.tick(this, env, dt);
     }
 
     public void injure(Injury injury, RandomGenerator rng) {
@@ -97,15 +117,24 @@ public final class Body {
     }
 
     public boolean isIncapacitated() {
-        return vitals.consciousness < ConsciousnessSystem.INCAPACITATED;
+        return vitals.consciousness < ConsciousnessSystem.INCAPACITATED || needs.collapsed > 0f;
     }
 
     public boolean isUnconscious() {
         return vitals.consciousness < ConsciousnessSystem.UNCONSCIOUS;
     }
 
+    /** Sleeping in a bed or on the ground, or passed out from exhaustion. */
+    public boolean isAsleep(Environment env) {
+        return needs.asleep || needs.passedOut || (env != null && env.sleeping);
+    }
+
     public void emit(BodyEvent.Type type, BodyPart part) {
         if (events.size() < 64) events.add(new BodyEvent(type, part));
+    }
+
+    public void emit(BodyEvent.Type type) {
+        emit(type, null);
     }
 
     public List<BodyEvent> drainEvents() {
@@ -150,7 +179,7 @@ public final class Body {
         v.heartRate = Math.max(v.heartRate, 90f);
         v.systolic = Math.max(v.systolic, 105f);
         v.diastolic = v.systolic * (2f / 3f);
-        v.respRate = Math.max(v.respRate, 14f);
+        v.respRate = Math.max(v.respRate, 18f);
         v.spo2 = Math.max(v.spo2, 95f);
         v.hemothorax = 0f;
         v.embolism = false;
@@ -168,18 +197,24 @@ public final class Body {
             if (part == BodyPart.THORAX) s.muscle = Math.max(s.muscle, 30f);
         }
         needs.thirst = Math.max(needs.thirst, 40f);
+        needs.hunger = Math.max(needs.hunger, 40f);
         needs.energy = Math.max(needs.energy, 40f);
+        needs.vomiting = 0f;
+        needs.collapsed = 0f;
+        chem.venom = 0f;
         derived.compute(this);
     }
 
-    /** Back to a healthy body (keeps the blood type). */
+    /** Back to a healthy body (keeps the blood type, the weight and the skills). */
     public void healFully() {
+        float weight = needs.weight;
         for (PartState part : parts) part.reset();
         vitals.reset();
         needs.reset();
+        needs.weight = weight;
         mind.reset();
         chem.reset();
-        exhaustionDebt = 0f;
+        senses.reset();
         events.clear();
         derived.compute(this);
     }
@@ -203,6 +238,11 @@ public final class Body {
         v.push("chemistry");
         chem.visit(v);
         v.pop();
-        exhaustionDebt = v.f("exhaustion_debt", exhaustionDebt);
+        v.push("skills");
+        skills.visit(v);
+        v.pop();
+        v.push("senses");
+        senses.visit(v);
+        v.pop();
     }
 }
