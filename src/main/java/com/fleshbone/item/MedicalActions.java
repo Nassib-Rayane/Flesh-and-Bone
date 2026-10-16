@@ -114,9 +114,9 @@ public final class MedicalActions {
         return new PartAction(100, ItemUseAnimation.BRUSH, Treatments::splintTarget,
                 (part, s) -> Treatments.canSplint(s),
                 (body, part, quality, amount, rng) -> {
-                    Treatments.splint(body, part);
+                    Treatments.splint(body, part, quality);
                     return MedicalAction.Result.ok(1);
-                }, none(), 1f);
+                }, MedicalAction.Minigame.SPLINT, 0.8f);
     }
 
     public static MedicalAction icePack() {
@@ -130,7 +130,7 @@ public final class MedicalActions {
 
     public static MedicalAction antibiotics() {
         return new BodyAction(32, ItemUseAnimation.EAT, (body, part, quality, amount, rng) -> {
-            Treatments.takeAntibiotics(body, 50f);
+            Treatments.takeAntibiotics(body, 50f * dose(), rng);
             return MedicalAction.Result.ok(1);
         });
     }
@@ -168,7 +168,7 @@ public final class MedicalActions {
 
     public static MedicalAction defibrillator() {
         return new BodyAction(40, ItemUseAnimation.BLOCK, (body, part, quality, amount, rng) -> {
-            Treatments.ShockResult result = Treatments.defibrillate(body, quality, rng);
+            Treatments.ShockResult result = Treatments.defibrillate(body, quality, amount <= 0 ? 2 : amount, rng);
             return new MedicalAction.Result(result == Treatments.ShockResult.RESTARTED || result == Treatments.ShockResult.RHYTHM_RESTORED,
                     1, "fleshbone.message.shock." + result.name().toLowerCase(java.util.Locale.ROOT));
         }, body -> true, MedicalAction.Minigame.DEFIB);
@@ -194,7 +194,15 @@ public final class MedicalActions {
     }
 
     public static MedicalAction antivenom() {
-        return injection(Treatments::injectAntivenom);
+        return new BodyAction(30, ItemUseAnimation.SPEAR, (body, part, quality, amount, rng) -> {
+            Treatments.injectAntivenom(body, rng);
+            return MedicalAction.Result.ok(1);
+        });
+    }
+
+    /** Dose multiplier from the server config. */
+    private static float dose() {
+        return com.fleshbone.config.FBConfig.DRUG_STRENGTH.get().floatValue();
     }
 
     public static MedicalAction procoagulant() {
@@ -207,21 +215,23 @@ public final class MedicalActions {
 
     public static MedicalAction saline() {
         return new BodyAction(80, ItemUseAnimation.BLOCK, (body, part, quality, amount, rng) -> {
+            if (quality <= 0f) return MedicalAction.Result.fail("fleshbone.message.no_vein");
             Treatments.infuseSaline(body, 0.35f);
             return MedicalAction.Result.ok(1);
-        });
+        }, body -> true, MedicalAction.Minigame.INFUSION);
     }
 
     public static MedicalAction chestDrain() {
         return new BodyAction(100, ItemUseAnimation.BLOCK, (body, part, quality, amount, rng) -> {
-            Treatments.chestDrain(body);
+            Treatments.chestDrain(body, quality);
             return MedicalAction.Result.ok(1);
-        }, Treatments::canDrain, MedicalAction.Minigame.NONE);
+        }, Treatments::canDrain, MedicalAction.Minigame.CHEST_DRAIN);
     }
 
     /** Transfuses the bag; an incompatible donor causes a reaction. */
     public static MedicalAction bloodBag() {
         return new StackAction(100, (body, quality, stack, patient) -> {
+            if (quality <= 0f) return MedicalAction.Result.fail("fleshbone.message.no_vein");
             com.fleshbone.sim.BloodType donor = stack.get(FBDataComponents.BLOOD_TYPE.get());
             boolean ok = Treatments.transfuse(body, donor, 0.45f);
             return new MedicalAction.Result(ok, 1, ok ? null : "fleshbone.message.transfusion_reaction");
@@ -248,6 +258,8 @@ public final class MedicalActions {
     private record StackAction(int useTicks, StackApplier applier, java.util.function.Predicate<Body> allowed) implements MedicalAction {
         @Override public Target target() { return Target.BODY; }
 
+        @Override public Minigame minigame() { return Minigame.INFUSION; }
+
         @Override public ItemUseAnimation animation() { return ItemUseAnimation.BLOCK; }
 
         @Override public BodyPart autoTarget(Body body) { return null; }
@@ -266,16 +278,111 @@ public final class MedicalActions {
         }
     }
 
+    // ------------------------------------------------------------------------------------------------ improvised
+
+    /** Flint and steel or a fire charge on a bleeding wound. */
+    public static MedicalAction cauterize() {
+        return new PartAction(40, ItemUseAnimation.BRUSH, Treatments::mostBleeding,
+                (part, s) -> !s.amputated && s.bleed > 0f && s.skin < 100f,
+                (body, part, quality, amount, rng) -> {
+                    Treatments.cauterize(body, part, quality);
+                    return new MedicalAction.Result(true, 1, "fleshbone.message.cauterized");
+                }, MedicalAction.Minigame.CAUTERIZE, 0.4f);
+    }
+
+    /** Honey on a wound: a mild antiseptic. Gives the bottle back. */
+    public static MedicalAction honey() {
+        return new PartAction(40, ItemUseAnimation.BRUSH, Treatments::disinfectTarget,
+                (part, s) -> Treatments.canDisinfect(s),
+                (body, part, quality, amount, rng) -> {
+                    PartState s = body.part(part);
+                    s.disinfected = Math.max(s.disinfected, 120f);
+                    s.contamination *= 0.5f;
+                    body.derived.compute(body);
+                    return new MedicalAction.Result(true, 1, null, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GLASS_BOTTLE));
+                }, none(), 0.8f);
+    }
+
+    /** Cobwebs packed into a bleeding wound. */
+    public static MedicalAction cobweb() {
+        return new PartAction(30, ItemUseAnimation.BRUSH, Treatments::mostBleeding,
+                (part, s) -> !s.amputated && s.bleed > 0f && s.skin < 100f,
+                (body, part, quality, amount, rng) -> {
+                    Treatments.cobweb(body, part);
+                    return MedicalAction.Result.ok(1);
+                }, none(), 1f);
+    }
+
+    /** Paper as a makeshift dressing: worse than a rag. */
+    public static MedicalAction paper() {
+        return new PartAction(50, ItemUseAnimation.BRUSH, Treatments::bandageTarget,
+                (part, s) -> Treatments.canBandage(s),
+                (body, part, quality, amount, rng) -> {
+                    Treatments.bandage(body, part, BandageType.RAG, quality * 0.6f);
+                    return MedicalAction.Result.ok(1);
+                }, none(), 0.6f);
+    }
+
+    /** A stick as an improvised splint: it holds, but not as well. */
+    public static MedicalAction stickSplint() {
+        return new PartAction(80, ItemUseAnimation.BRUSH, Treatments::splintTarget,
+                (part, s) -> Treatments.canSplint(s),
+                (body, part, quality, amount, rng) -> {
+                    Treatments.splint(body, part, 0.5f * quality);
+                    return MedicalAction.Result.ok(1);
+                }, MedicalAction.Minigame.SPLINT, 0.8f);
+    }
+
+    /** Snow or ice as a cold compress. */
+    public static MedicalAction coldCompress(float seconds) {
+        return new PartAction(30, ItemUseAnimation.BRUSH, Treatments::mostPainful,
+                (part, s) -> Treatments.canChill(s),
+                (body, part, quality, amount, rng) -> {
+                    Treatments.chill(body, part, seconds);
+                    return MedicalAction.Result.ok(1);
+                }, none(), 1f);
+    }
+
+    /** Milk as an antidote to venom and food poisoning. Gives the bucket back. */
+    public static MedicalAction milk() {
+        return new BodyAction(32, ItemUseAnimation.DRINK, (body, part, quality, amount, rng) -> {
+            Treatments.antidote(body);
+            return new MedicalAction.Result(true, 1, null, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BUCKET));
+        }, body -> body.chem.venom > 1f || body.chem.foodPoisoning + body.chem.foodPoisoningDepot > 1f, none());
+    }
+
+    private static final java.util.Map<net.minecraft.world.item.Item, MedicalAction> IMPROVISED = new java.util.HashMap<>();
+
+    /** The medical action of a stack: a medical item, or a vanilla item used as an improvised remedy. */
+    public static MedicalAction of(net.minecraft.world.item.ItemStack stack) {
+        if (stack.isEmpty()) return null;
+        if (stack.getItem() instanceof MedicalItem item) return item.action();
+        if (IMPROVISED.isEmpty()) {
+            IMPROVISED.put(net.minecraft.world.item.Items.FLINT_AND_STEEL, cauterize());
+            IMPROVISED.put(net.minecraft.world.item.Items.FIRE_CHARGE, cauterize());
+            IMPROVISED.put(net.minecraft.world.item.Items.HONEY_BOTTLE, honey());
+            IMPROVISED.put(net.minecraft.world.item.Items.COBWEB, cobweb());
+            IMPROVISED.put(net.minecraft.world.item.Items.PAPER, paper());
+            IMPROVISED.put(net.minecraft.world.item.Items.STICK, stickSplint());
+            IMPROVISED.put(net.minecraft.world.item.Items.SNOWBALL, coldCompress(60f));
+            IMPROVISED.put(net.minecraft.world.item.Items.ICE, coldCompress(120f));
+            IMPROVISED.put(net.minecraft.world.item.Items.PACKED_ICE, coldCompress(150f));
+            IMPROVISED.put(net.minecraft.world.item.Items.BLUE_ICE, coldCompress(180f));
+            IMPROVISED.put(net.minecraft.world.item.Items.MILK_BUCKET, milk());
+        }
+        return IMPROVISED.get(stack.getItem());
+    }
+
     public static MedicalAction painkillers() {
         return new BodyAction(32, ItemUseAnimation.EAT, (body, part, quality, amount, rng) -> {
-            Treatments.takeAnalgesic(body, 45f);
+            Treatments.takeAnalgesic(body, 45f * dose());
             return MedicalAction.Result.ok(1);
         });
     }
 
     public static MedicalAction morphine() {
         return new BodyAction(30, ItemUseAnimation.SPEAR, (body, part, quality, amount, rng) -> {
-            Treatments.injectOpiate(body, 35f);
+            Treatments.injectOpiate(body, 35f * dose());
             return MedicalAction.Result.ok(1);
         });
     }

@@ -537,6 +537,63 @@ def items():
         write_png(os.path.join(ROOT, 'item', name + '.png'), 16, 16, pixels)
 
 
+def cabinet():
+    """Medicine cabinet: white doors with a red cross, simple panelling."""
+    white, shade, frame, red, handle = (232, 232, 226, 255), (204, 204, 198, 255), (120, 112, 100, 255), (200, 30, 30, 255), (90, 90, 90, 255)
+    def face(kind):
+        rows = []
+        for y in range(16):
+            row = []
+            for x in range(16):
+                c = white
+                if x in (0, 15) or y in (0, 15):
+                    c = frame
+                elif kind == 'front':
+                    if x == 8:
+                        c = shade
+                    if 5 <= x <= 10 and 7 <= y <= 8 or 7 <= x <= 8 and 5 <= y <= 10:
+                        c = red
+                    if y == 9 and x in (6, 9) and False:
+                        c = handle
+                    if (x, y) in ((7, 12), (9, 12)):
+                        c = handle
+                elif kind == 'side':
+                    if y in (5, 10):
+                        c = shade
+                else:
+                    if (x + y) % 7 == 0:
+                        c = shade
+                row.append(c)
+            rows.append(row)
+        return rows
+    for kind in ('front', 'side', 'top'):
+        write_png(os.path.join(ROOT, 'block', 'medicine_cabinet_' + kind + '.png'), 16, 16, face(kind))
+
+
+def doctor_overlay():
+    """Villager profession overlay: a white coat with a red cross (villager UV layout)."""
+    coat, edge, red = (238, 238, 232, 255), (196, 196, 190, 255), (200, 30, 30, 255)
+    rows = [[(0, 0, 0, 0)] * 64 for _ in range(64)]
+    def fill(x0, y0, x1, y1, c):
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                rows[y][x] = c
+    fill(16, 20, 40, 38, coat)   # body
+    fill(0, 38, 28, 64, coat)    # robe
+    fill(40, 38, 56, 46, coat)   # crossed arms
+    fill(44, 22, 60, 30, coat)   # upper arms
+    for x in range(0, 28):
+        rows[63][x] = edge
+    fill(9, 46, 11, 52, red)     # cross on the robe front
+    fill(7, 48, 13, 50, red)
+    fill(25, 28, 27, 34, red)    # and on the chest
+    fill(23, 30, 29, 32, red)
+    for folder in ('villager', 'zombie_villager'):
+        write_png(os.path.join(ROOT, 'entity', folder, 'profession', 'doctor.png'), 64, 64, rows)
+
+
 if __name__ == '__main__':
     vignette()
     items()
+    cabinet()
+    doctor_overlay()

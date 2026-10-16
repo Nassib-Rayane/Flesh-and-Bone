@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PGP",
+    "PRP",
+    "PBP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "G": "minecraft:glass_pane",
+    "R": "minecraft:red_dye",
+    "B": "fleshbone:bandage"
+  },
+  "result": {
+    "count": 1,
+    "id": "fleshbone:medicine_cabinet"
+  }
+}

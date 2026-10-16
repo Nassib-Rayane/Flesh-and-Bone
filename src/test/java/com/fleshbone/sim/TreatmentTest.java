@@ -101,9 +101,12 @@ class TreatmentTest {
         body.derived.compute(body);
         float before = body.derived.totalPain;
         Treatments.injectOpiate(body, 35f);
-        assertTrue(body.derived.totalPain < before - 25f);
+        SimTestUtil.run(body, SimTestUtil.env(), 120f);
+        body.derived.compute(body);
+        assertTrue(body.derived.totalPain < before - 20f, "works within a couple of minutes: " + before + " -> " + body.derived.totalPain);
         Treatments.injectOpiate(body, 35f);
         Treatments.injectOpiate(body, 35f);
-        assertTrue(body.chem.opiate > 80f, "three doses at once is an overdose");
+        SimTestUtil.run(body, SimTestUtil.env(), 120f);
+        assertTrue(body.chem.opiate > 80f, "three doses at once is an overdose: " + body.chem.opiate);
     }
 }

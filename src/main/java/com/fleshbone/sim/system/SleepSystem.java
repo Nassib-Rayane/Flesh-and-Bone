@@ -40,6 +40,7 @@ public final class SleepSystem {
         NOT_TIRED,
         IN_PAIN,
         TOO_SICK,
+        RESTLESS,
         BAD_SPOT;
 
         public final String key = name().toLowerCase(Locale.ROOT);
@@ -76,7 +77,13 @@ public final class SleepSystem {
         if (n.energy > TIRED) return Refusal.NOT_TIRED;
         if (body.derived.totalPain > MAX_PAIN) return Refusal.IN_PAIN;
         if (n.sickness > MAX_SICKNESS) return Refusal.TOO_SICK;
+        if (restless(body)) return Refusal.RESTLESS;
         return null;
+    }
+
+    /** Opioid withdrawal or a lot of caffeine: impossible to fall asleep. */
+    public static boolean restless(Body body) {
+        return ChemistrySystem.withdrawal(body.chem) > ChemistrySystem.SLEEPLESS_WITHDRAWAL || body.chem.caffeine > 30f;
     }
 
     public static void fallAsleep(Body body, int quality) {
@@ -106,7 +113,7 @@ public final class SleepSystem {
         if (body.derived.totalPain > MAX_PAIN) return WakeReason.PAIN;
         if (env != null && env.underwater) return WakeReason.WATER;
         if (n.sickness > 55f) return WakeReason.NAUSEA;
-        if (ChemistrySystem.withdrawal(c) > ChemistrySystem.SEVERE_WITHDRAWAL) return WakeReason.WITHDRAWAL;
+        if (ChemistrySystem.withdrawal(c) > ChemistrySystem.SLEEPLESS_WITHDRAWAL) return WakeReason.WITHDRAWAL;
         if (body.mind.mood < -50f) return WakeReason.DESPAIR;
         if (n.hunger <= 0f) return WakeReason.HUNGER;
         if (n.thirst <= 0f) return WakeReason.THIRST;

@@ -67,7 +67,7 @@ public final class HealingSystem {
             }
 
             if (s.isFractured() && speed > 0f) {
-                float rate = (s.splinted ? SPLINT_FRACTURE_BONUS : 1f) * nutrition * sleep / settings.fractureHealSeconds();
+                float rate = (s.splinted ? 1f + (SPLINT_FRACTURE_BONUS - 1f) * s.splintQuality : 1f) * nutrition * sleep / settings.fractureHealSeconds();
                 float step = Math.min(s.fracture, rate * dt);
                 s.fracture -= step;
                 cost += step * HUNGER_PER_FRACTURE;
@@ -78,7 +78,7 @@ public final class HealingSystem {
                 }
             }
             if (s.isDislocated() && speed > 0f) {
-                float rate = (s.splinted ? SPLINT_DISLOCATION_BONUS : 1f) * nutrition * sleep / settings.dislocationHealSeconds();
+                float rate = (s.splinted ? 1f + (SPLINT_DISLOCATION_BONUS - 1f) * s.splintQuality : 1f) * nutrition * sleep / settings.dislocationHealSeconds();
                 s.dislocation = Math.max(0f, s.dislocation - rate * dt);
                 if (s.dislocation <= 0f) {
                     body.mind.addMood(3f);

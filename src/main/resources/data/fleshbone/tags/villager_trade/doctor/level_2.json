@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:doctor/2/buy_glass_bottles",
+    "fleshbone:doctor/2/antiseptic",
+    "fleshbone:doctor/2/splint",
+    "fleshbone:doctor/2/tweezers",
+    "fleshbone:doctor/2/ice_pack"
+  ]
+}

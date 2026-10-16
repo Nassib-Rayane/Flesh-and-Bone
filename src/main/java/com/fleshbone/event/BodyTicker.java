@@ -60,6 +60,7 @@ public final class BodyTicker {
         if (simulated) {
             lockFood(player, body, runtime);
             Environment env = EnvironmentSampler.sample(player, runtime, ENV);
+            com.fleshbone.effect.EffectBridge.apply(player, body, env, env.dt);
             body.tick(env, FBSettings.sim(), ThreadLocalRandom.current());
             for (BodyEvent bodyEvent : body.drainEvents()) {
                 Feedback.onBodyEvent(player, body, bodyEvent);

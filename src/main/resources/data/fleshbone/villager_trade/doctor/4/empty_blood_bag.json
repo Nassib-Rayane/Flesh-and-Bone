@@ -1,0 +1,13 @@
+{
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 3
+  },
+  "gives": {
+    "id": "fleshbone:empty_blood_bag",
+    "count": 2
+  },
+  "max_uses": 8.0,
+  "reputation_discount": 0.05,
+  "xp": 15.0
+}

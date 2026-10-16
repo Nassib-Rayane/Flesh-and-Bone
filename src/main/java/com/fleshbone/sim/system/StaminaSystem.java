@@ -65,7 +65,7 @@ public final class StaminaSystem {
             case PLANK: return PLANK_COST;
             default: break;
         }
-        if (env.swimming) return SWIM_COST;
+        if (env.swimming) return env.swimEase ? SWIM_COST * 0.3f : SWIM_COST;
         if (env.sprinting) return SPRINT_COST;
         if (env.moveSpeed > 0.5f) return env.inWater ? WADE_COST : WALK_COST;
         return 0f;
@@ -80,6 +80,7 @@ public final class StaminaSystem {
         if (n.hunger <= 0f) f *= 0.5f;
         if (n.thirst <= 0f) f *= 0.5f;
         f *= SimMath.clamp(body.vitals.bloodVolume / 5f, 0.3f, 1f);
+        f *= 1f + Math.min(0.5f, (body.vitals.adrenaline + body.chem.epinephrine) / 100f);
         if (n.vomiting > 0f) f = 0f;
         if (body.isAsleep(env)) f *= 1.2f;
         return Math.max(0f, f);

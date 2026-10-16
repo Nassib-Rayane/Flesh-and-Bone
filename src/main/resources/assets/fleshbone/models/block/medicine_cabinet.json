@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "fleshbone:block/medicine_cabinet_top",
+    "front": "fleshbone:block/medicine_cabinet_front",
+    "side": "fleshbone:block/medicine_cabinet_side"
+  }
+}

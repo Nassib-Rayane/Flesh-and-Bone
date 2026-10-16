@@ -57,6 +57,19 @@ public final class FBTags {
         }
     }
 
+    public static final class Blocks {
+        /** Cut the bare hand that breaks them (glass). */
+        public static final TagKey<net.minecraft.world.level.block.Block> SHARP_WHEN_BROKEN = tag("sharp_when_broken");
+        /** Bruise the bare hand that mines them (stone, ores, metal). */
+        public static final TagKey<net.minecraft.world.level.block.Block> HURTS_BARE_HANDS = tag("hurts_bare_hands");
+        /** Scratch the legs walking through them (dry bushes, roses). */
+        public static final TagKey<net.minecraft.world.level.block.Block> SCRATCHY_PLANTS = tag("scratchy_plants");
+
+        private static TagKey<net.minecraft.world.level.block.Block> tag(String path) {
+            return TagKey.create(Registries.BLOCK, FleshBone.id(path));
+        }
+    }
+
     public static final class Items {
         public static final TagKey<Item> CUTTING_WEAPONS = tag("cutting_weapons");
         public static final TagKey<Item> PIERCING_WEAPONS = tag("piercing_weapons");

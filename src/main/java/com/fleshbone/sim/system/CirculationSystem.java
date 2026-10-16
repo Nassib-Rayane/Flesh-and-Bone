@@ -116,7 +116,10 @@ public final class CirculationSystem {
                 + 0.1f * Math.max(0f, n.thirst - ThirstSystem.SLAKED)
                 + exertionPressure(body)
                 + 0.08f * c.caffeine
-                + 0.2f * c.epinephrine;
+                + 0.2f * c.epinephrine
+                + 0.15f * ChemistrySystem.withdrawal(c)
+                - 0.1f * c.antiarrhythmic
+                - 0.8f * c.anaphylaxis;
         return p;
     }
 
@@ -142,7 +145,8 @@ public final class CirculationSystem {
                 + Math.abs(v.bodyTemp - 37f) * 0.5f
                 + fibrillationDrive(v.fibrillation)
                 - ChemistrySystem.relief(c) * 0.2f
-                + ChemistrySystem.withdrawal(c) * 0.125f
+                + ChemistrySystem.withdrawal(c) * 0.4f
+                + c.anaphylaxis * 0.3f
                 - SimMath.clamp(v.viscosity * 0.05f, -20f, 20f)
                 + c.caffeine * 0.15f
                 - c.antiarrhythmic * 0.1f
@@ -191,7 +195,8 @@ public final class CirculationSystem {
                 || v.spo2 < 50f
                 || WeightClass.fibrillates(n.weight)
                 || ChemistrySystem.withdrawal(c) > ChemistrySystem.SEVERE_WITHDRAWAL
-                || v.sepsis > 80f;
+                || v.sepsis > 80f
+                || c.epinephrine > 80f;
         boolean sustain = v.systolic < FIBRILLATION_PRESSURE || v.viscosity > 80f || v.spo2 < 60f || v.heartRate > 180f
                 || v.bodyTemp < 30f;
         float rise = 0f;

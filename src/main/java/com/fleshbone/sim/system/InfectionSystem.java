@@ -43,7 +43,8 @@ public final class InfectionSystem {
         float dirt = body.needs.dirtiness;
         float immunity = body.derived.immunity;
         float speed = settings.infectionSpeed();
-        float growth = ImmunitySystem.infectionRate(immunity) / 60f * speed;
+        // Antibiotics kill bacteria directly as well as boosting immunity: −4 %/min at a full course
+        float growth = (ImmunitySystem.infectionRate(immunity) - body.chem.antibiotic * 0.06f) / 60f * speed;
         float healing = ImmunitySystem.disinfectedRate(immunity) / 60f * speed;
         float seedFactor = SimMath.clamp(2f - immunity / 100f, 0.2f, 2.5f);
         float total = 0f;
@@ -104,7 +105,8 @@ public final class InfectionSystem {
             float infection = body.part(part).infection;
             if (infection > 20f) drive += infection / 100f;
         }
-        return Math.min(FEVER_CEILING - TemperatureSystem.NORMAL, drive * 1.2f + body.vitals.sepsis / 100f * 1.5f);
+        return Math.min(FEVER_CEILING - TemperatureSystem.NORMAL,
+                drive * 1.2f + body.vitals.sepsis / 100f * 1.5f + body.chem.foodPoisoning / 100f * 4f);
     }
 
     public static float totalInfection(Body body) {

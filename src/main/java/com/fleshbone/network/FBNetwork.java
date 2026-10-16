@@ -62,9 +62,11 @@ public final class FBNetwork {
         ServerPlayer patient = PatientSessions.patientOf(medic, payload.targetId());
         if (patient == null || payload.slot() < 0 || payload.slot() >= medic.getInventory().getContainerSize()) return;
         ItemStack stack = medic.getInventory().getItem(payload.slot());
-        if (!(stack.getItem() instanceof MedicalItem item) || rateLimited(medic, item.action().useTicks())) return;
-        float quality = Math.max(0f, Math.min(1f, payload.quality()));
-        TreatmentService.treat(medic, patient, stack, part(payload.part()), quality, Math.max(0, payload.amount()));
+        com.fleshbone.item.MedicalAction action = com.fleshbone.item.MedicalActions.of(stack);
+        if (action == null || rateLimited(medic, action.useTicks())) return;
+        // A negative quality: the procedure was given up, only its mistakes count
+        float quality = payload.quality() < 0f ? -1f : Math.min(1f, payload.quality());
+        TreatmentService.treat(medic, patient, stack, part(payload.part()), quality, Math.max(0, payload.amount()), payload.mistakes());
     }
 
     private static void onProcedure(FBPayloads.DoProcedure payload, IPayloadContext context) {
@@ -72,8 +74,8 @@ public final class FBNetwork {
         ServerPlayer patient = PatientSessions.patientOf(medic, payload.targetId());
         FBPayloads.Procedure[] procedures = FBPayloads.Procedure.values();
         if (patient == null || payload.procedure() < 0 || payload.procedure() >= procedures.length || rateLimited(medic, 40)) return;
-        float quality = Math.max(0f, Math.min(1f, payload.quality()));
-        TreatmentService.procedure(medic, patient, procedures[payload.procedure()], part(payload.part()), quality);
+        float quality = payload.quality() < 0f ? -1f : Math.min(1f, payload.quality());
+        TreatmentService.procedure(medic, patient, procedures[payload.procedure()], part(payload.part()), quality, payload.mistakes());
     }
 
     private static void onCpr(FBPayloads.Cpr payload, IPayloadContext context) {
@@ -84,7 +86,7 @@ public final class FBNetwork {
         long now = medic.level().getGameTime();
         if (now - runtime.lastCprTick < 8) return;
         runtime.lastCprTick = now;
-        TreatmentService.cpr(medic, patient, Math.max(0f, Math.min(1f, payload.perfusion())));
+        TreatmentService.cpr(medic, patient, Math.max(0f, Math.min(1f, payload.perfusion())), Math.max(0, Math.min(3, payload.cracks())));
     }
 
     private static void onRemoveDevice(FBPayloads.RemoveDevice payload, IPayloadContext context) {

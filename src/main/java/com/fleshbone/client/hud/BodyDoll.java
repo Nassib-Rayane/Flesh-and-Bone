@@ -7,8 +7,9 @@ import com.fleshbone.sim.PartState;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * Paper-doll view of the body, Casualties: Unknown style: the outer band of each part reddens as its skin is lost,
- * the inside as its muscle is lost. Drawn on a 20×44 grid; the player's left side is on the left of the screen.
+ * Paper-doll view of the body, Casualties: Unknown style: each part is coloured by its pain (pale → red), darkened by
+ * lost muscle, rimmed raw red by lost skin; blood drops mark bleeding parts. Drawn on a 20×44 grid; the player's left
+ * side is on the left of the screen.
  */
 public final class BodyDoll {
     public static final int GRID_W = 20;
@@ -51,6 +52,10 @@ public final class BodyDoll {
         g.pose().translate(x, y);
         g.pose().scale(scale, scale);
         for (BodyPart part : BodyPart.VALUES) drawPart(g, body, part, part == highlighted, time);
+        g.pose().pushMatrix();
+        g.pose().scale(0.5f, 0.5f);
+        drawBlood(g, body, time);
+        g.pose().popMatrix();
         g.pose().popMatrix();
     }
 
@@ -77,18 +82,27 @@ public final class BodyDoll {
             if (highlighted) g.outline(x0, y0, x1 - x0, y1 - y0, 0xFFFFE040);
             return;
         }
-        g.fill(x0, y0, x1, y1, tissueColor(s.skin));
-        if (x1 - x0 >= 3 && y1 - y0 >= 3) g.fill(x0 + 1, y0 + 1, x1 - 1, y1 - 1, tissueColor(s.muscle));
-
-        if (s.infection > 25f) {
-            int alpha = (int) Math.min(170f, s.infection * 1.7f);
-            g.fill(x0, y0, x1, y1, (alpha << 24) | 0x9030C0);
+        // Pain colours the limb (pale → yellow → orange → red), as in Casualties: Unknown
+        g.fill(x0, y0, x1, y1, painColor(body.derived.partPain[part.ordinal()]));
+        // Lost muscle darkens the inside, lost skin turns the rim raw red
+        int inset = x1 - x0 >= 3 && y1 - y0 >= 3 ? 1 : 0;
+        int dark = Math.round(Math.max(0f, 100f - s.muscle) / 100f * 0.7f * 255f);
+        if (dark > 4) g.fill(x0 + inset, y0 + inset, x1 - inset, y1 - inset, dark << 24);
+        int raw = Math.round(Math.max(0f, 100f - s.skin) / 100f * 255f);
+        if (raw > 8 && inset > 0) {
+            int ring = (raw << 24) | 0x7A0C08;
+            g.fill(x0, y0, x1, y0 + 1, ring);
+            g.fill(x0, y1 - 1, x1, y1, ring);
+            g.fill(x0, y0 + 1, x0 + 1, y1 - 1, ring);
+            g.fill(x1 - 1, y0 + 1, x1, y1 - 1, ring);
         }
-        float bleed = body.derived.partBleed[part.ordinal()] + body.derived.partInternal[part.ordinal()];
-        if (bleed > 0.001f) {
-            float pulse = 0.55f + 0.45f * (float) Math.sin(time * 6.0 + part.ordinal());
-            int alpha = (int) (Math.min(1f, 0.25f + bleed / 0.45f) * pulse * 200f);
-            g.fill(x0, y0, x1, y1, (alpha << 24) | 0xE00000);
+        if (s.infection > 10f) {
+            int alpha = Math.round(Math.min(1f, s.infection / 60f) * 230f);
+            for (int yy = y0; yy < y1; yy++) {
+                for (int xx = x0; xx < x1; xx++) {
+                    if ((xx * 7 + yy * 13 + part.ordinal() * 3) % 5 == 0) g.fill(xx, yy, xx + 1, yy + 1, (alpha << 24) | 0x58B030);
+                }
+            }
         }
         if (s.isBandaged()) {
             int color = s.bandageSoak > 0.6f ? 0xE0B04040 : s.bandageSoak > 0.3f ? 0xE0E0B0B0 : 0xE0F0F0F0;
@@ -111,6 +125,53 @@ public final class BodyDoll {
             if (px < x1) g.fill(px, y1 - 2, px + 1, y1 - 1, 0xFF505050);
         }
         if (highlighted) g.outline(x0, y0, x1 - x0, y1 - y0, 0xFFFFE040);
+    }
+
+    /** Blood drops on bleeding parts (1 to 3 by flow, one dripping), a dark drop for bleeding inside. Half-grid units. */
+    private static void drawBlood(GuiGraphicsExtractor g, Body body, float time) {
+        for (BodyPart part : BodyPart.VALUES) {
+            int i = part.ordinal();
+            float external = body.derived.partBleed[i];
+            float internal = body.derived.partInternal[i];
+            if (external <= 0.001f && internal <= 0.001f) continue;
+            int[] r = RECTS[i];
+            int cx = r[0] + r[2];
+            int cy = r[1] + r[3];
+            if (internal > 0.001f) drop(g, cx - 2, cy - 4, 0xFF3A0010, 0xFF8A2040);
+            if (external > 0.001f) {
+                int drops = external >= 0.225f ? 3 : external >= 0.09f ? 2 : 1;
+                int width = (r[2] - r[0]) * 2;
+                for (int n = 0; n < drops; n++) {
+                    int dx = drops == 1 ? 0 : Math.round((n - (drops - 1) / 2f) * Math.min(6f, width / (float) drops));
+                    drop(g, cx - 2 + dx, cy - 4 - (width < 7 ? n * 3 : 0), 0xFFC80A0A, 0xFFFF6A5A);
+                }
+                // One drop falls from the bottom of the part, faster the heavier the flow
+                float speed = 0.7f + Math.min(2f, external * 6f);
+                float fall = (time * speed + i * 0.37f) % 1f;
+                int alpha = Math.round((1f - fall) * 255f);
+                int y = r[3] * 2 + Math.round(fall * 6f);
+                g.fill(cx - 1, y, cx + 1, y + 2, (alpha << 24) | 0xC80A0A);
+            }
+        }
+    }
+
+    /** 5×7 drop (half-grid units) with a light top-left glint. */
+    private static void drop(GuiGraphicsExtractor g, int x, int y, int color, int glint) {
+        g.fill(x + 2, y, x + 3, y + 2, color);
+        g.fill(x + 1, y + 2, x + 4, y + 3, color);
+        g.fill(x, y + 3, x + 5, y + 6, color);
+        g.fill(x + 1, y + 6, x + 4, y + 7, color);
+        g.fill(x + 1, y + 3, x + 2, y + 4, glint);
+    }
+
+    /** Pale without pain, then yellow, orange and red as it hurts more. */
+    public static int painColor(float pain) {
+        float p = Math.max(0f, pain);
+        int rgb;
+        if (p < 20f) rgb = lerp(0xE6E0D6, 0xEED79A, p / 20f);
+        else if (p < 45f) rgb = lerp(0xEED79A, 0xE8963C, (p - 20f) / 25f);
+        else rgb = lerp(0xE8963C, 0xD02A1E, Math.min(1f, (p - 45f) / 30f));
+        return 0xFF000000 | rgb;
     }
 
     /** Pale when healthy, red when hurt, nearly black when destroyed. */

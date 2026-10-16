@@ -8,10 +8,10 @@ import java.util.function.Predicate;
 final class SimTestUtil {
     static final float DT = 0.05f;
     /** Default rules without the last stand roll, so dying bodies die deterministically. */
-    static final SimSettings SETTINGS = new SimSettings(5f, 1f, 30f * 60f, 12f * 60f, 1f, 1f, 1f, 1f,
+    static final SimSettings SETTINGS = new SimSettings(5f, 1f, 30f * 60f, 12f * 60f, 1f, 1f, 1f, 1f, 1f,
             true, true, true, true, true, true, true, true, false);
     /** Hunger, thirst and sleepiness frozen: for timing tests that must not starve, dehydrate or fall asleep. */
-    static final SimSettings STEADY = new SimSettings(5f, 1f, 30f * 60f, 12f * 60f, 0f, 0f, 0f, 1f,
+    static final SimSettings STEADY = new SimSettings(5f, 1f, 30f * 60f, 12f * 60f, 0f, 0f, 0f, 1f, 1f,
             true, true, true, true, true, true, true, true, false);
 
     private SimTestUtil() {}

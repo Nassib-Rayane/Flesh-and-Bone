@@ -49,6 +49,8 @@ public record BodyEvent(Type type, BodyPart part) {
         BRAIN_DROP,
         BRAIN_SHAKE,
         BRAIN_FLASH,
+        ALLERGIC_REACTION,
+        FOOD_POISONING,
         STRENGTH_UP,
         RESILIENCE_UP,
         INTELLIGENCE_UP

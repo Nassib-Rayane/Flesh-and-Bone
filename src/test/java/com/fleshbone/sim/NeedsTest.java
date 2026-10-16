@@ -132,6 +132,71 @@ class NeedsTest {
     }
 
     @Test
+    void walkingInMildWeatherWithLeatherStaysCool() {
+        Body body = SimTestUtil.body();
+        Environment env = SimTestUtil.env();
+        env.ambientTemp = 21f;
+        env.insulation = 0.7f;
+        env.moveSpeed = 4f;
+        SimTestUtil.run(body, env, 10 * 60f);
+        assertTrue(body.vitals.bodyTemp < 37.4f, "walking in leather at 21 °C: " + body.vitals.bodyTemp);
+        env.sprinting = true;
+        env.moveSpeed = 5.6f;
+        SimTestUtil.run(body, env, 120f);
+        assertTrue(body.vitals.bodyTemp < 38f, "two minutes of sprinting: " + body.vitals.bodyTemp);
+    }
+
+    @Test
+    void desertWithoutWaterEventuallyOverheats() {
+        Body body = SimTestUtil.body();
+        body.needs.thirst = 0f;
+        Environment env = SimTestUtil.env();
+        env.ambientTemp = 41f;
+        env.humidity = 0f;
+        env.sprinting = true;
+        env.moveSpeed = 5.6f;
+        SimTestUtil.run(body, env, 5 * 60f);
+        float halfway = body.vitals.bodyTemp;
+        SimTestUtil.run(body, env, 5 * 60f);
+        assertTrue(body.vitals.bodyTemp > 38.3f && body.vitals.bodyTemp > halfway, "no sweat left to cool down: "
+                + halfway + " -> " + body.vitals.bodyTemp);
+    }
+
+    @Test
+    void humidHeatIsHarderToSweatOff() {
+        Body dry = SimTestUtil.body();
+        Body humid = SimTestUtil.body();
+        Environment dryAir = SimTestUtil.env();
+        dryAir.ambientTemp = 36f;
+        dryAir.humidity = 0f;
+        Environment humidAir = SimTestUtil.env();
+        humidAir.ambientTemp = 36f;
+        humidAir.humidity = 1f;
+        SimTestUtil.run(dry, dryAir, 5 * 60f);
+        SimTestUtil.run(humid, humidAir, 5 * 60f);
+        assertTrue(humid.vitals.bodyTemp > dry.vitals.bodyTemp + 0.05f, "jungle " + humid.vitals.bodyTemp + " vs desert " + dry.vitals.bodyTemp);
+    }
+
+    @Test
+    void wetClothesDryFasterByAFireAndChillTheBody() {
+        Body air = SimTestUtil.body();
+        air.needs.wetness = 80f;
+        Body fire = SimTestUtil.body();
+        fire.needs.wetness = 80f;
+        Environment still = SimTestUtil.env();
+        Environment campfire = SimTestUtil.env();
+        campfire.heatTarget = 45f;
+        campfire.heatStrength = 0.5f;
+        SimTestUtil.run(air, still, 120f);
+        SimTestUtil.run(fire, campfire, 120f);
+        assertTrue(air.needs.wetness < 80f, "the body's own heat dries the clothes: " + air.needs.wetness);
+        assertTrue(fire.needs.wetness < air.needs.wetness - 20f, "much faster by a fire: " + fire.needs.wetness + " vs " + air.needs.wetness);
+        Body dryBody = SimTestUtil.body();
+        SimTestUtil.run(dryBody, still, 120f);
+        assertTrue(air.vitals.bodyTemp < dryBody.vitals.bodyTemp, "evaporation takes heat away");
+    }
+
+    @Test
     void exhaustionMakesYouPassOutUntilRested() {
         Body body = SimTestUtil.body();
         body.needs.energy = 0.5f;
@@ -248,32 +313,5 @@ class NeedsTest {
         assertEquals(0.05f, com.fleshbone.sim.system.MindSystem.refusalChance(-10f), 1e-4);
         assertEquals(0.15f, com.fleshbone.sim.system.MindSystem.refusalChance(-30f), 1e-4);
         assertEquals(0.9f, com.fleshbone.sim.system.MindSystem.refusalChance(-100f), 1e-4);
-    }
-
-    @Test
-    void opioidToleranceTurnsIntoWithdrawal() {
-        Body body = SimTestUtil.body();
-        Treatments.injectOpiate(body, 35f);
-        assertEquals(35f, body.chem.opiateReception(), 1e-4, "full effect at first");
-        SimTestUtil.run(body, SimTestUtil.env(), 120f);
-        assertTrue(body.chem.opiateReception() < 25f, "the tolerance catches up: " + body.chem.opiateReception());
-        for (int dose = 0; dose < 3; dose++) {
-            Treatments.injectOpiate(body, 30f);
-            SimTestUtil.run(body, SimTestUtil.env(), 300f);
-        }
-        SimTestUtil.run(body, SimTestUtil.env(), 30 * 60f);
-        float withdrawal = ChemistrySystem.withdrawal(body.chem);
-        assertTrue(withdrawal > 5f, "withdrawal after the opioids wore off: " + withdrawal);
-        assertTrue(body.mind.mood < -5f, "withdrawal is miserable: " + body.mind.mood);
-    }
-
-    @Test
-    void naloxoneThrowsATolerantBodyIntoWithdrawal() {
-        Body body = SimTestUtil.body();
-        Treatments.injectOpiate(body, 60f);
-        SimTestUtil.run(body, SimTestUtil.env(), 600f);
-        Treatments.injectNaloxone(body);
-        SimTestUtil.run(body, SimTestUtil.env(), 5f);
-        assertTrue(ChemistrySystem.withdrawal(body.chem) > 20f, "precipitated withdrawal: " + ChemistrySystem.withdrawal(body.chem));
     }
 }

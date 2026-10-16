@@ -23,6 +23,8 @@ public final class BodyRuntime {
     public double lastX;
     public double lastZ;
     public boolean hasLastPosition;
+    /** Horizontal speed in blocks per second, measured from the position: the server never sees a player's velocity. */
+    public float moveSpeed;
     /** Last values applied as attribute modifiers, to avoid touching attributes every tick. */
     public float appliedMove = 1f;
     public float appliedJump = 1f;
@@ -33,11 +35,18 @@ public final class BodyRuntime {
     public boolean forcedPose;
     /** The vanilla food bar is held at 19 while the C:U hunger runs; false until the first locked tick. */
     public boolean foodLocked;
+    /** Bare-handed mining of hard blocks: last tick counted, and ticks since the last bruise. */
+    public long lastPunchTick;
+    public int punchTicks;
+    /** Ticks counted between two checks for scratchy plants. */
+    public int scratchTimer;
     /** Workout chosen from the health panel. */
     public Environment.Exercise exercise = Environment.Exercise.NONE;
     // Environment sampled once a second
     public long lastSampleTick = -1;
     public float ambientTemp = 20f;
+    public float humidity = 0.5f;
+    public float waterTemp = 15f;
     public float heatTarget = 20f;
     public float heatStrength;
     public float insulation;

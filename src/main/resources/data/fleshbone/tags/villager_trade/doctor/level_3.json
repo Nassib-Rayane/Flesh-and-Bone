@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:doctor/3/buy_honey",
+    "fleshbone:doctor/3/sterile_bandage",
+    "fleshbone:doctor/3/suture_kit",
+    "fleshbone:doctor/3/tourniquet",
+    "fleshbone:doctor/3/canteen"
+  ]
+}

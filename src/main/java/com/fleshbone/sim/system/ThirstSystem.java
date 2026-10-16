@@ -33,7 +33,8 @@ public final class ThirstSystem {
             return;
         }
         float heat = 1f + 0.5f * Math.max(0f, body.vitals.bodyTemp - TemperatureSystem.NORMAL);
-        float rate = DRAIN * settings.thirstSpeed() * heat * (n.thirst > SLAKED ? 2f : 1f) * (body.isAsleep(env) ? 0.5f : 1f);
+        float rate = DRAIN * settings.thirstSpeed() * heat * (n.thirst > SLAKED ? 2f : 1f) * (body.isAsleep(env) ? 0.5f : 1f)
+                * (1f + body.chem.caffeine / 200f);
         n.thirst = Math.max(Needs.MIN_THIRST, n.thirst - rate * dt);
 
         if (n.thirst <= PARCHED) {

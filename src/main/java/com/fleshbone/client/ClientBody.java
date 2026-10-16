@@ -19,6 +19,12 @@ public final class ClientBody {
         return player.getData(FBAttachments.BODY);
     }
 
+    /** The local player can use their hands (not unconscious, not lying helpless); true when not simulated. */
+    public static boolean canAct() {
+        Body body = get();
+        return body == null || !body.isIncapacitated();
+    }
+
     /** Whether exact values are visible: everyone has a health chip (server config), or a vitals monitor is carried. */
     public static boolean vitalsVisible(Player player) {
         if (com.fleshbone.config.FBSettings.healthChip()) return true;

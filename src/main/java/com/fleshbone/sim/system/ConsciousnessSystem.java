@@ -49,6 +49,7 @@ public final class ConsciousnessSystem {
         cap = Math.min(cap, temperatureCap(v.bodyTemp));
         float relief = ChemistrySystem.relief(body.chem);
         if (relief > 50f) cap = Math.min(cap, 150f - relief);
+        if (body.chem.antiarrhythmic > 50f) cap = Math.min(cap, 100f - (body.chem.antiarrhythmic - 50f) * 0.4f);
         if (n.vomiting > 0f) cap = Math.min(cap, SicknessSystem.FIT_CONSCIOUSNESS);
         if (n.groggy > 0f) cap = Math.min(cap, GROGGY);
         if (n.collapsed > 0f) cap = Math.min(cap, COLLAPSED);

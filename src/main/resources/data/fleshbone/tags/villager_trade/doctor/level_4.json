@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:doctor/4/morphine",
+    "fleshbone:doctor/4/antibiotics",
+    "fleshbone:doctor/4/saline_bag",
+    "fleshbone:doctor/4/antivenom",
+    "fleshbone:doctor/4/empty_blood_bag"
+  ]
+}

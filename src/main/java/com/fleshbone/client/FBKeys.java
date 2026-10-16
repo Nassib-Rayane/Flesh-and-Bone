@@ -41,7 +41,7 @@ public final class FBKeys {
     static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         while (HEALTH_PANEL.get().consumeClick()) {
-            if (mc.screen == null && ClientBody.get() != null) mc.setScreen(new HealthPanelScreen());
+            if (mc.screen == null && ClientBody.get() != null && ClientBody.canAct()) mc.setScreen(new HealthPanelScreen());
         }
         while (UNI_HEALTH.get().consumeClick()) {
             var modes = com.fleshbone.config.FBConfig.UniHealthMode.values();

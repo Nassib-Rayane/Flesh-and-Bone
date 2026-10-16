@@ -122,7 +122,10 @@ public final class Moodles {
         if (relief > ChemistrySystem.OVERDOSE) add(out, Type.OVERDOSE, 4);
         else add(out, Type.OPIATED, relief > 50f ? 3 : relief > 20f ? 2 : relief > 5f ? 1 : 0);
         float withdrawal = ChemistrySystem.withdrawal(c);
-        add(out, Type.WITHDRAWAL, withdrawal > 34f ? 4 : withdrawal > 25f ? 3 : withdrawal > 16f ? 2 : withdrawal > 5f ? 1 : 0);
+        add(out, Type.WITHDRAWAL, withdrawal > 45f ? 4 : withdrawal > 30f ? 3 : withdrawal > 16f ? 2 : withdrawal > 5f ? 1 : 0);
+        add(out, Type.CAFFEINE_WITHDRAWAL, level(ChemistrySystem.caffeineWithdrawal(c), 5f, 15f, 30f, 1000f));
+        add(out, Type.ANAPHYLAXIS, level(c.anaphylaxis, 1f, 20f, 40f, 70f));
+        add(out, Type.FOOD_POISONING, level(c.foodPoisoning, 3f, 15f, 35f, 60f));
         float adrenaline = v.adrenaline + c.epinephrine;
         add(out, Type.ADRENALINE, adrenaline > 65f ? 2 : adrenaline > 20f ? 1 : 0);
         if (c.caffeine > 10f) add(out, Type.STIMULATED, 1);

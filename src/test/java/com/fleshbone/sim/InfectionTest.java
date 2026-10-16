@@ -8,7 +8,6 @@ import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
-import com.fleshbone.sim.minigame.SawTracker;
 import com.fleshbone.sim.system.InfectionSystem;
 import com.fleshbone.sim.treatment.Treatments;
 
@@ -95,26 +94,16 @@ class InfectionTest {
         body.part(BodyPart.FOREARM_R).infection = 80f;
         assertTrue(Treatments.canAmputate(BodyPart.FOREARM_R, body.part(BodyPart.FOREARM_R)));
         assertFalse(Treatments.canAmputate(BodyPart.THORAX, body.part(BodyPart.THORAX)));
-        Treatments.amputate(body, BodyPart.FOREARM_R, 1f);
+        Treatments.amputate(body, BodyPart.FOREARM_R, 0.3f);
         assertTrue(body.part(BodyPart.FOREARM_R).amputated && body.part(BodyPart.HAND_R).amputated);
         assertEquals(0f, body.part(BodyPart.FOREARM_R).infection, 1e-6);
         assertTrue(body.derived.partBleed[BodyPart.UPPER_ARM_R.ordinal()] > 0.2f, "the stump bleeds heavily");
+        Body clean = SimTestUtil.body();
+        Treatments.amputate(clean, BodyPart.FOREARM_R, 1f);
+        assertTrue(clean.part(BodyPart.UPPER_ARM_R).bleed < body.part(BodyPart.UPPER_ARM_R).bleed / 2f, "tied-off vessels bleed far less");
         assertTrue(body.mind.trauma >= 30f);
         Capabilities caps = Capabilities.compute(body, BodyPart.Side.RIGHT);
         assertFalse(caps.mainHandUsable(), "no right hand anymore");
-    }
-
-    @Test
-    void sawStrokesNeedLengthAndReversals() {
-        SawTracker saw = new SawTracker(0f, 30f, 4);
-        for (int stroke = 0; stroke < 5; stroke++) {
-            for (int i = 0; i <= 40; i++) saw.sample(stroke % 2 == 0 ? i : 40 - i, 1f);
-        }
-        assertTrue(saw.done(), "five long strokes complete a four-stroke cut: " + saw.strokes());
-        assertTrue(saw.quality() > 0.9f);
-        SawTracker jitter = new SawTracker(0f, 30f, 4);
-        for (int i = 0; i < 100; i++) jitter.sample(i % 2 == 0 ? 0 : 5, 0f);
-        assertEquals(0, jitter.strokes(), "tiny jitters do not saw");
     }
 
     private static void runFor(Body body, float seconds) {

@@ -40,6 +40,14 @@ public final class Environment {
     /** Temperature radiated by the nearby fires, lava or ice, and how strongly it is felt (0–1). */
     public float heatTarget = 20f;
     public float heatStrength;
+    /** 0–1 air humidity (from the biome): humid heat is harder to sweat off, dry air dries faster. */
+    public float humidity = 0.5f;
+    /** Temperature of the water around the body when swimming, °C. */
+    public float waterTemp = 15f;
+    /** Fire resistance: neither hot air nor heat sources warm the body. */
+    public boolean heatProof;
+    /** Dolphin's grace: swimming costs little stamina. */
+    public boolean swimEase;
     /** 0–1 clothing insulation. */
     public float insulation;
     /** 0–15 block light at the player's eyes. */
@@ -51,8 +59,10 @@ public final class Environment {
     /** Kilograms carried: inventory and equipment. */
     public float load;
 
-    /** Air temperature pulled toward the nearby heat (or cold) sources. */
+    /** Air temperature pulled toward the nearby heat (or cold) sources; the water's when in water. */
     public float feltTemperature() {
-        return ambientTemp + (heatTarget - ambientTemp) * heatStrength;
+        if (inWater) return waterTemp;
+        float felt = ambientTemp + (heatTarget - ambientTemp) * heatStrength;
+        return heatProof ? Math.min(felt, 24f) : felt;
     }
 }

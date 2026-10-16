@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:dead_bush",
+    "minecraft:bush",
+    "minecraft:firefly_bush",
+    "minecraft:rose_bush",
+    "minecraft:short_dry_grass",
+    "minecraft:tall_dry_grass"
+  ]
+}

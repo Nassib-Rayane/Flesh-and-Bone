@@ -47,15 +47,20 @@ public final class FBDataMaps {
      * @param sicknessChance chance of the nausea
      * @param mood           lasting mood change (negative for disgusting food)
      * @param thirst         thirst change (dry or salty food is negative)
+     * @param poisoning      food poisoning dose (raw meat, rotten food), breaking out over the next minutes
+     * @param poisoningChance chance of the poisoning
      */
-    public record Nutrition(Optional<Float> hunger, Optional<Float> weight, float sickness, float sicknessChance, float mood, float thirst) {
+    public record Nutrition(Optional<Float> hunger, Optional<Float> weight, float sickness, float sicknessChance, float mood, float thirst,
+                            float poisoning, float poisoningChance) {
         public static final Codec<Nutrition> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.FLOAT.optionalFieldOf("hunger").forGetter(Nutrition::hunger),
                 Codec.FLOAT.optionalFieldOf("weight").forGetter(Nutrition::weight),
                 Codec.FLOAT.optionalFieldOf("sickness", 0f).forGetter(Nutrition::sickness),
                 Codec.FLOAT.optionalFieldOf("sickness_chance", 1f).forGetter(Nutrition::sicknessChance),
                 Codec.FLOAT.optionalFieldOf("mood", 0f).forGetter(Nutrition::mood),
-                Codec.FLOAT.optionalFieldOf("thirst", 0f).forGetter(Nutrition::thirst)
+                Codec.FLOAT.optionalFieldOf("thirst", 0f).forGetter(Nutrition::thirst),
+                Codec.FLOAT.optionalFieldOf("poisoning", 0f).forGetter(Nutrition::poisoning),
+                Codec.FLOAT.optionalFieldOf("poisoning_chance", 1f).forGetter(Nutrition::poisoningChance)
         ).apply(i, Nutrition::new));
     }
 

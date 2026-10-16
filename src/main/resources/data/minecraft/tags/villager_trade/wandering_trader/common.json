@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:wandering/bandage",
+    "fleshbone:wandering/painkillers",
+    "fleshbone:wandering/antiseptic",
+    "fleshbone:wandering/splint"
+  ]
+}

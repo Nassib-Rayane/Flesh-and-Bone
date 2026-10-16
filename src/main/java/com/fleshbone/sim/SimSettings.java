@@ -11,6 +11,7 @@ package com.fleshbone.sim;
  * @param thirstSpeed            multiplier for thirst (1 = 3.5 per minute at rest)
  * @param energySpeed            multiplier for sleepiness and sleep recovery (1 = a full bar lasts about 24 minutes)
  * @param infectionSpeed         multiplier for infection growth (1 = 7.2 % per minute at 100 % immunity)
+ * @param dependenceSpeed        multiplier for opioid and caffeine tolerance and dependence
  * @param lastStand              a dying body may get one last stand
  */
 public record SimSettings(
@@ -22,6 +23,7 @@ public record SimSettings(
         float thirstSpeed,
         float energySpeed,
         float infectionSpeed,
+        float dependenceSpeed,
         boolean infection,
         boolean hunger,
         boolean thirst,
@@ -32,6 +34,6 @@ public record SimSettings(
         boolean drugs,
         boolean lastStand) {
 
-    public static final SimSettings DEFAULT = new SimSettings(5f, 1f, 30f * 60f, 12f * 60f, 1f, 1f, 1f, 1f,
+    public static final SimSettings DEFAULT = new SimSettings(5f, 1f, 30f * 60f, 12f * 60f, 1f, 1f, 1f, 1f, 1f,
             true, true, true, true, true, true, true, true, true);
 }

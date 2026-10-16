@@ -115,7 +115,53 @@ public final class Treatments {
     }
 
     public static void splint(Body body, BodyPart part) {
-        body.part(part).splinted = true;
+        splint(body, part, 1f);
+    }
+
+    /** @param quality 1 for a proper splint, about 0.4 for sticks and string */
+    public static void splint(Body body, BodyPart part, float quality) {
+        PartState s = body.part(part);
+        s.splinted = true;
+        s.splintQuality = clamp01(quality);
+        body.derived.compute(body);
+    }
+
+    public static boolean canCauterize(Body body, BodyPart part) {
+        PartState s = body.part(part);
+        return !s.amputated && s.bleed > 0f && s.skin < 100f;
+    }
+
+    /**
+     * Burning a wound shut: the bleeding stops at once and the germs die, at the price of a deep burn and searing
+     * pain. A steady hand ({@code quality}) burns less.
+     */
+    public static void cauterize(Body body, BodyPart part, float quality) {
+        PartState s = body.part(part);
+        float q = clamp01(quality);
+        s.bleed = 0f;
+        s.skin = Math.max(0f, s.skin - (12f + 18f * (1f - q)));
+        s.pain = Math.min(150f, s.pain + 45f + 15f * (1f - q));
+        s.contamination *= 0.3f;
+        s.disinfected = Math.max(s.disinfected, 60f);
+        s.sutured = false;
+        body.vitals.adrenaline = Math.min(100f, body.vitals.adrenaline + 20f);
+        body.derived.compute(body);
+    }
+
+    /** Folk remedies on a bleeding wound (cobwebs): slows the bleeding, dirties the wound. */
+    public static void cobweb(Body body, BodyPart part) {
+        PartState s = body.part(part);
+        s.bleed *= 0.6f;
+        s.contamination = Math.min(100f, s.contamination + 10f);
+        body.derived.compute(body);
+    }
+
+    /** Milk: an old antidote that binds part of the venom and settles a poisoned stomach. */
+    public static void antidote(Body body) {
+        body.chem.venom *= 0.6f;
+        body.chem.foodPoisoning *= 0.4f;
+        body.chem.foodPoisoningDepot = 0f;
+        body.needs.sickness = Math.max(0f, body.needs.sickness - 10f);
         body.derived.compute(body);
     }
 
@@ -179,15 +225,14 @@ public final class Treatments {
 
     // ------------------------------------------------------------------------------------------------ drugs
 
+    /** Painkiller pills: they take a couple of minutes to work. */
     public static void takeAnalgesic(Body body, float dose) {
-        body.chem.analgesic = Math.min(100f, body.chem.analgesic + dose);
-        body.derived.compute(body);
+        body.chem.analgesicDepot = Math.min(200f, body.chem.analgesicDepot + dose);
     }
 
-    /** Opioid dose: strong pain relief while the tolerance catches up; too much stops breathing. */
+    /** Opioid shot: works within a minute, relieves for half an hour, builds tolerance and dependence. */
     public static void injectOpiate(Body body, float dose) {
-        body.chem.opiate = Math.min(150f, body.chem.opiate + dose);
-        body.derived.compute(body);
+        body.chem.opiateDepot = Math.min(200f, body.chem.opiateDepot + dose);
     }
 
     /** Neutralizes venom over the next minutes. */
@@ -195,8 +240,26 @@ public final class Treatments {
         body.chem.antivenom = 100f;
     }
 
+    /** Antivenom is horse serum: 3 % of people react badly. */
+    public static void injectAntivenom(Body body, RandomGenerator rng) {
+        injectAntivenom(body);
+        if (rng.nextFloat() < 0.03f) com.fleshbone.sim.system.DrugEffects.allergicReaction(body);
+    }
+
+    /** Spoiled or raw food: the poisoning breaks out over the next minutes. */
+    public static void poison(Body body, float dose) {
+        body.chem.foodPoisoningDepot = Math.min(100f, body.chem.foodPoisoningDepot + dose);
+        body.emit(BodyEvent.Type.FOOD_POISONING);
+    }
+
     public static void takeAntibiotics(Body body, float dose) {
-        body.chem.antibiotic = Math.min(100f, body.chem.antibiotic + dose);
+        body.chem.antibioticDepot = Math.min(200f, body.chem.antibioticDepot + dose);
+    }
+
+    /** One person in twenty is allergic. */
+    public static void takeAntibiotics(Body body, float dose, RandomGenerator rng) {
+        takeAntibiotics(body, dose);
+        if (rng.nextFloat() < 0.05f) com.fleshbone.sim.system.DrugEffects.allergicReaction(body);
     }
 
     // ------------------------------------------------------------------------------------------------ heart and blood
@@ -209,14 +272,24 @@ public final class Treatments {
      * heart can throw it into fibrillation.
      */
     public static ShockResult defibrillate(Body body, float quality, RandomGenerator rng) {
+        return defibrillate(body, quality, 2, rng);
+    }
+
+    /**
+     * @param energy 1 = 150 J, 2 = 200 J, 3 = 360 J: more energy works better and burns more. A flat line (more than
+     *               a minute of arrest without CPR) barely responds to a shock.
+     */
+    public static ShockResult defibrillate(Body body, float quality, int energy, RandomGenerator rng) {
         Vitals v = body.vitals;
         PartState thorax = body.part(BodyPart.THORAX);
-        thorax.pain = Math.min(150f, thorax.pain + 30f);
-        thorax.skin = Math.max(0f, thorax.skin - 4f);
-        float q = clamp01(quality);
+        int joules = Math.max(1, Math.min(3, energy));
+        thorax.pain = Math.min(150f, thorax.pain + 20f + 8f * joules);
+        thorax.skin = Math.max(0f, thorax.skin - (1f + 2f * joules));
+        float q = clamp01(quality) * (0.85f + 0.1f * joules);
         ShockResult result;
         if (v.cardiacArrest) {
-            float chance = 0.2f * Math.max(0.1f, 1f - v.arrestTime / 300f) * (0.5f + 0.5f * q)
+            boolean asystole = v.arrestTime > 60f && v.cprPerfusion < 0.3f;
+            float chance = 0.2f * Math.max(0.1f, 1f - v.arrestTime / 300f) * (0.5f + 0.5f * q) * (asystole ? 0.15f : 1f)
                     * (1f + Math.min(1f, body.chem.epinephrine / 60f)) * (v.cprPerfusion > 0.3f ? 1.25f : 1f);
             if (rng.nextFloat() < Math.min(0.6f, chance)) {
                 CirculationSystem.restartHeart(body);
@@ -251,8 +324,7 @@ public final class Treatments {
     }
 
     public static void injectEpinephrine(Body body) {
-        body.chem.epinephrine = Math.min(100f, body.chem.epinephrine + 60f);
-        body.derived.compute(body);
+        body.chem.epinephrineDepot = Math.min(150f, body.chem.epinephrineDepot + 60f);
     }
 
     public static void injectAntiarrhythmic(Body body) {
@@ -314,10 +386,33 @@ public final class Treatments {
 
     /** Chest drain: lets the blood around the lungs out. Painful and a little dirty. */
     public static void chestDrain(Body body) {
-        body.vitals.hemothorax = Math.max(0f, body.vitals.hemothorax - 35f);
+        chestDrain(body, 1f);
+    }
+
+    /** @param quality how well the tube sits: a badly placed one drains less */
+    public static void chestDrain(Body body, float quality) {
+        body.vitals.hemothorax = Math.max(0f, body.vitals.hemothorax - 35f * (0.5f + 0.5f * clamp01(quality)));
         PartState thorax = body.part(BodyPart.THORAX);
         thorax.pain = Math.min(150f, thorax.pain + 25f);
         thorax.contamination = Math.min(100f, thorax.contamination + 8f);
+        body.derived.compute(body);
+    }
+
+    /** What went wrong during a procedure: pain from a clumsy hand, torn skin and fresh bleeding, germs pushed in. */
+    public static void complications(Body body, BodyPart part, com.fleshbone.sim.procedure.Mistakes mistakes) {
+        if (mistakes.total() == 0) return;
+        BodyPart where = part != null ? part : BodyPart.THORAX;
+        // After an amputation, the stump takes it
+        while (body.part(where).amputated && where.parent() != null) where = where.parent();
+        PartState s = body.part(where);
+        if (s.amputated) return;
+        s.pain = Math.min(150f, s.pain + Math.min(40f, mistakes.pain * 5f));
+        if (mistakes.tear > 0) {
+            s.skin = Math.max(0f, s.skin - Math.min(20f, mistakes.tear * 3f));
+            s.bleed = Math.min(100f, s.bleed + Math.min(25f, mistakes.tear * 3f));
+            if (part == null) s.internalBleed = Math.min(100f, s.internalBleed + mistakes.tear * 4f);
+        }
+        s.contamination = Math.min(100f, s.contamination + Math.min(30f, mistakes.dirt * 5f));
         body.derived.compute(body);
     }
 
@@ -332,7 +427,7 @@ public final class Treatments {
         Needs n = body.needs;
         n.thirst = Math.min(Needs.MAX_THIRST, Math.max(Needs.MIN_THIRST, n.thirst + thirst));
         body.vitals.bodyTemp += warmth;
-        body.chem.caffeine = Math.min(100f, body.chem.caffeine + caffeine);
+        body.chem.caffeineDepot = Math.min(150f, body.chem.caffeineDepot + caffeine);
         boolean sick = sickness != 0f && rng.nextFloat() < sicknessChance;
         if (sick) n.sickness = Math.max(0f, Math.min(100f, n.sickness + sickness));
         body.derived.compute(body);
@@ -403,7 +498,8 @@ public final class Treatments {
             PartState s = body.part(stump);
             s.skin = Math.max(0f, s.skin - 30f * (1.5f - q));
             s.muscle = Math.max(0f, s.muscle - 50f);
-            s.bleed = 100f;
+            // Vessels tied off cleanly bleed far less
+            s.bleed = Math.max(s.bleed, 100f * Math.min(1f, 1.2f - q));
             s.pain = Math.min(150f, s.pain + 60f);
             s.contamination = Math.min(100f, s.contamination + 10f);
             s.sutured = false;

@@ -77,6 +77,10 @@ public final class MindSystem {
         mood += Math.min(40f, ChemistrySystem.relief(c));
         mood -= Math.min(60f, ChemistrySystem.withdrawal(c) * 1.66f);
         if (c.caffeine > 10f) mood += 3f;
+        mood -= Math.min(10f, ChemistrySystem.caffeineWithdrawal(c) * 0.5f);
+        if (c.epinephrine > 30f) mood -= Math.min(10f, (c.epinephrine - 30f) * 0.2f);
+        if (c.anaphylaxis > 10f) mood -= 15f;
+        if (c.foodPoisoning > 10f) mood -= Math.min(15f, c.foodPoisoning * 0.3f);
         for (BodyPart part : BodyPart.VALUES) {
             if (body.part(part).amputated) {
                 mood -= 10f;

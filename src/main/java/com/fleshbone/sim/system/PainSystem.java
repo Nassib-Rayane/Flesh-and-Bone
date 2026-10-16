@@ -69,13 +69,15 @@ public final class PainSystem {
 
     /** Pain removed by drugs: opioids by what the body receives, mild painkillers up to 25. */
     public static float analgesia(Chemistry c) {
-        return ChemistrySystem.relief(c) * 0.9f + Math.min(25f, c.analgesic * 0.4f);
+        return ChemistrySystem.relief(c) * 0.9f + Math.min(30f, c.analgesic * 0.6f);
     }
 
     public static float total(Body body, float raw) {
         Vitals v = body.vitals;
         if (v.lastStand > 0f) return 0f;
-        float felt = raw * resilienceFactor(body.skills) - (v.adrenaline + body.chem.epinephrine) * 0.5f - analgesia(body.chem);
+        float withdrawal = ChemistrySystem.withdrawal(body.chem);
+        float felt = raw * resilienceFactor(body.skills) * (1f + withdrawal / 150f) + withdrawal * 0.3f
+                - (v.adrenaline + body.chem.epinephrine) * 0.5f - analgesia(body.chem);
         return Math.max(0f, felt);
     }
 

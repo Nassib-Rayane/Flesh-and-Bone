@@ -96,6 +96,8 @@ public final class DamageClassifier {
         public void sideEffects(Body body, float severity) {
             if (mode == Mode.RESPIRATORY) body.vitals.spo2 = Math.max(0f, body.vitals.spo2 - severity * 0.4f);
             if (poisoned) body.needs.sickness = Math.min(100f, body.needs.sickness + severity * 0.5f);
+            // The warden's sonic boom bursts the eardrums
+            if (mode == Mode.INTERNAL) com.fleshbone.sim.system.SensesSystem.deafen(body, Math.min(80f, severity * 0.8f));
         }
 
         /** Localized hits: only the armor piece over the part wears down. */

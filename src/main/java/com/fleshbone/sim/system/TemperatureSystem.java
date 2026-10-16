@@ -9,16 +9,17 @@ import com.fleshbone.sim.Vitals;
 /**
  * Core temperature as a heat balance, after Casualties: Unknown's structure:
  * <pre>
- * dT/dt = exchange × (felt air − T) / insulation      (clothes, body fat, wet skin, water)
- *       + metabolic heat                              (less when exhausted or on opioids)
- *       + activity heat                               (running, swimming, workouts)
- *       + shivering                                   (below the setpoint, burns hunger)
- *       + emergency heating below 32 °C               (burns hunger fast)
- *       − sweating                                    (above the setpoint, costs water, wets the skin)
- *       − evaporation from wet skin
+ * dT/dt = exchange × (felt air or water − T) / insulation   (clothes, body fat, wet skin, water)
+ *       + metabolic heat                                   (less when exhausted or on opioids)
+ *       + activity heat                                    (running, swimming, workouts)
+ *       + shivering                                        (below the setpoint, burns hunger)
+ *       + emergency heating below 32 °C                    (burns hunger fast)
+ *       − sweating                                         (above the setpoint, costs water, weaker in humid heat)
  * </pre>
- * Rates are calibrated for Minecraft's climates: naked, 20 °C air is neutral, −10 °C brings hypothermia in about ten
- * minutes, leather and a campfire keep the cold away. Infections raise the setpoint (fever, up to 40.5 °C).
+ * Drying wet clothes cools the body too (see the hygiene system). Rates are calibrated for Minecraft's climates: naked,
+ * 20 °C air is neutral; walking or sprinting in mild weather stays under 38 °C; −10 °C brings hypothermia in about ten
+ * minutes; leather and a campfire keep the cold away. Clothes hold heat in the cold, much less once sweating starts.
+ * Infections raise the setpoint (fever, up to 40.5 °C).
  */
 public final class TemperatureSystem {
     public static final float NORMAL = 37f;
@@ -28,12 +29,12 @@ public final class TemperatureSystem {
     public static final float BASE_HEAT = 0.0126f;
     public static final float SHIVER_HEAT = 0.02f;
     public static final float EMERGENCY_HEAT = 0.01f;
-    public static final float SWEAT_COOLING = 0.03f;
+    public static final float SWEAT_COOLING = 0.06f;
     /** Hunger burnt per second at full shivering, and by emergency heating. */
     public static final float SHIVER_HUNGER = 0.02f;
     public static final float EMERGENCY_HUNGER = 0.035f;
     /** Thirst lost per second at full sweating. */
-    public static final float SWEAT_THIRST = 0.05f;
+    public static final float SWEAT_THIRST = 0.04f;
     public static final float HYPOTHERMIA = 35f;
     /** Below this, emergency heating kicks in and the limbs go numb. */
     public static final float NUMB = 32f;
@@ -49,22 +50,28 @@ public final class TemperatureSystem {
         Needs n = body.needs;
         float setpoint = NORMAL + InfectionSystem.feverDrive(body);
         float t = v.bodyTemp;
+        float felt = env.feltTemperature();
+        n.airTemp = felt;
         float change;
         if (!settings.temperature()) {
             // Weather off: only fevers move the temperature
             change = SimMath.clamp(setpoint - t, -1f, 1f) * 0.01f;
         } else {
-            float exchange = EXCHANGE * (env.feltTemperature() - t) / insulation(body, env);
+            // Once the body has heat to shed, sweat evaporates through the clothes: they insulate half as much
+            float hot = SimMath.clamp((t - setpoint + 0.2f) / 0.4f, 0f, 1f);
+            float exchange = EXCHANGE * (felt - t) / insulation(body, env, hot);
             float relief = Math.min(100f, ChemistrySystem.relief(body.chem));
             float metabolism = BASE_HEAT * (0.6f + 0.4f * SimMath.clamp(n.energy / 100f, 0f, 1f)) * (1f - 0.005f * relief);
             boolean starving = settings.hunger() && n.hunger <= 0f;
             float drive = body.isUnconscious() ? 0.4f : 1f;
-            float shiver = SimMath.clamp((setpoint - 0.5f - t) / 1.5f, 0f, 1f) * drive * (starving ? 0.3f : 1f);
+            float shiver = SimMath.clamp((setpoint - 0.3f - t) / 1.5f, 0f, 1f) * drive * (starving ? 0.3f : 1f);
             boolean emergency = t < NUMB && !starving;
-            float sweat = SimMath.clamp((t - setpoint - 0.2f) / 1f, 0f, 1f) * (n.thirst > 0f ? 1f : 0.3f);
+            float sweat = SimMath.clamp((t - setpoint - 0.1f) / 0.5f, 0f, 1f) * (n.thirst > 0f ? 1f : 0.3f);
+            // Sweat barely evaporates in humid heat
+            float efficiency = 1f - 0.5f * SimMath.clamp(env.humidity, 0f, 1f) * SimMath.clamp((felt - 25f) / 10f, 0f, 1f);
             change = exchange + metabolism + activityHeat(env)
                     + shiver * SHIVER_HEAT + (emergency ? EMERGENCY_HEAT : 0f)
-                    - sweat * SWEAT_COOLING - 0.0001f * n.wetness;
+                    - sweat * SWEAT_COOLING * efficiency;
             if (settings.hunger()) {
                 n.hunger = Math.max(Needs.MIN_HUNGER, n.hunger - (shiver * SHIVER_HUNGER + (emergency ? EMERGENCY_HUNGER : 0f)) * dt);
             }
@@ -72,16 +79,25 @@ public final class TemperatureSystem {
             n.wetness = Math.min(100f, n.wetness + sweat * 0.15f * dt);
         }
         v.bodyTemp = SimMath.clamp(t + change * dt, 15f, 46f);
+        // Trend in °C per minute, smoothed for display
+        v.tempTrend += ((v.bodyTemp - t) / dt * 60f - v.tempTrend) * Math.min(1f, dt / 5f);
         if (v.bodyTemp > HEAT_BLOOD_LOSS) v.bloodVolume = Math.max(0f, v.bloodVolume - 0.225f / 60f * dt);
     }
 
-    /**
-     * Thermal insulation: 1 naked, up to 4 fully dressed; ±2 % per kg of body weight around 70 kg; wet clothes keep
-     * only 40 % of it; water conducts heat away whatever you wear.
-     */
     public static float insulation(Body body, Environment env) {
+        return insulation(body, env, 0f);
+    }
+
+    /**
+     * Thermal insulation: 1 naked, up to 4 fully dressed (2.5 while sweating); ±2 % per kg of body weight around
+     * 70 kg; wet clothes keep only 40 % of it; water conducts heat away whatever you wear.
+     *
+     * @param hot 0–1, how much the body is shedding heat
+     */
+    public static float insulation(Body body, Environment env, float hot) {
         Needs n = body.needs;
-        float clothes = 1f + 3f * SimMath.clamp(env.insulation, 0f, 1f);
+        float clothing = SimMath.clamp(env.insulation, 0f, 1f);
+        float clothes = 1f + (3f - 1.5f * hot) * clothing;
         float fat = SimMath.clamp(1f + 0.0214f * (n.weight - Needs.NORMAL_WEIGHT), 0.4f, 1.8f);
         float dry = 1f - 0.6f * n.wetness / 100f;
         float insulation = clothes * fat * dry;
@@ -91,9 +107,9 @@ public final class TemperatureSystem {
 
     /** Heat made by moving (°C/s). */
     static float activityHeat(Environment env) {
-        if (env.exercise != Environment.Exercise.NONE) return 0.01f;
-        if (env.swimming) return 0.008f;
-        if (env.sprinting) return 0.012f;
-        return env.moveSpeed > 0.5f ? 0.003f : 0f;
+        if (env.exercise != Environment.Exercise.NONE) return 0.008f;
+        if (env.swimming) return 0.006f;
+        if (env.sprinting) return 0.009f;
+        return env.moveSpeed > 0.5f ? 0.002f : 0f;
     }
 }

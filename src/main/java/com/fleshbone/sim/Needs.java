@@ -39,6 +39,8 @@ public final class Needs {
     public boolean passedOut;
     /** Kilograms carried (inventory and equipment), measured by the game. */
     public float carried;
+    /** Temperature felt around the body (air, or water when swimming), for display. */
+    public float airTemp = 20f;
     /** Workout in progress ({@link Environment.Exercise} ordinal), mirrored here so the client shows the pose. */
     public int exercise;
 
@@ -71,5 +73,6 @@ public final class Needs {
         passedOut = v.b("passed_out", passedOut);
         carried = v.f("carried", carried);
         exercise = v.i("exercise", exercise);
+        airTemp = v.f("air_temp", airTemp);
     }
 }

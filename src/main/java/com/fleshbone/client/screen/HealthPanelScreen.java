@@ -11,14 +11,18 @@ import com.fleshbone.client.hud.BodyDoll;
 import com.fleshbone.client.hud.MoodleLayer;
 import com.fleshbone.client.hud.UniHealth;
 import com.fleshbone.client.hud.Words;
-import com.fleshbone.client.minigame.BandageMinigame;
-import com.fleshbone.client.minigame.CprMinigame;
-import com.fleshbone.client.minigame.DefibMinigame;
-import com.fleshbone.client.minigame.ExtractMinigame;
-import com.fleshbone.client.minigame.MinigameScreen;
-import com.fleshbone.client.minigame.ResetMinigame;
-import com.fleshbone.client.minigame.SawMinigame;
-import com.fleshbone.client.minigame.SutureMinigame;
+import com.fleshbone.client.procedure.AmputationScreen;
+import com.fleshbone.client.procedure.BandageScreen;
+import com.fleshbone.client.procedure.CauterizeScreen;
+import com.fleshbone.client.procedure.ChestDrainScreen;
+import com.fleshbone.client.procedure.CprScreen;
+import com.fleshbone.client.procedure.DefibScreen;
+import com.fleshbone.client.procedure.ExtractScreen;
+import com.fleshbone.client.procedure.InfusionScreen;
+import com.fleshbone.client.procedure.ProcedureScreen;
+import com.fleshbone.client.procedure.ResetScreen;
+import com.fleshbone.client.procedure.SplintScreen;
+import com.fleshbone.client.procedure.SutureScreen;
 import com.fleshbone.config.FBConfig;
 import com.fleshbone.item.MedicalAction;
 import com.fleshbone.item.MedicalItem;
@@ -144,12 +148,22 @@ public class HealthPanelScreen extends Screen {
         return isExamining() ? ClientPatients.body(patientId) : ClientBody.get();
     }
 
+    private com.fleshbone.client.hud.EcgTrace trace() {
+        return isExamining() ? com.fleshbone.client.hud.EcgTrace.patient(patientId) : com.fleshbone.client.hud.EcgTrace.local();
+    }
+
     private int targetId() {
         return isExamining() ? patientId : minecraft.player.getId();
     }
 
     @Override
     public void tick() {
+        // Nobody treats anyone while out cold or lying helpless
+        if (!ClientBody.canAct()) {
+            pending = null;
+            onClose();
+            return;
+        }
         if (pending != null && minecraft != null && minecraft.level != null
                 && minecraft.level.getGameTime() - pending.startTick() >= pending.ticks()) {
             ClientPacketDistributor.sendToServer(pending.payload());
@@ -205,7 +219,7 @@ public class HealthPanelScreen extends Screen {
         boolean exact = isExamining() || ClientBody.vitalsVisible(minecraft.player);
         if (wide) {
             UniHealth.draw(g, font, body, uniX, y0 + 22, UniHealth.Detail.FULL, exact,
-                    selected != null ? selected : UniHealth.worstPart(body), ClientBody.time());
+                    selected != null ? selected : UniHealth.worstPart(body), ClientBody.time(), trace());
         }
         BodyPart hovered = BodyDoll.partAt(mouseX, mouseY, dollX, dollY, dollScale);
         BodyDoll.draw(g, body, dollX, dollY, dollScale, selected != null ? selected : hovered, ClientBody.time());
@@ -216,6 +230,7 @@ public class HealthPanelScreen extends Screen {
         if (!wide) {
             g.text(font, Component.translatable("fleshbone.panel.blood_type", body.vitals.bloodType.display()), x0 + 8, dollBottom + 6, DIM, false);
         }
+        drawLegend(g, dollX, wide ? dollBottom + 4 : dollBottom + 16);
         drawButtons(g, body, wide ? uniX : x0 + 8, y0 + panelH - 18, mouseX, mouseY);
 
         int detailsX = dollRight + 26;
@@ -347,22 +362,23 @@ public class HealthPanelScreen extends Screen {
             int part = selected.ordinal();
             for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
                 ItemStack stack = inventory.getItem(slot);
-                if (!(stack.getItem() instanceof MedicalItem item) || item.action().target() != MedicalAction.Target.PART) continue;
-                if (!item.action().canApply(body, selected) || hasOption(stack)) continue;
-                int ticks = item.action().useTicks();
+                MedicalAction action = com.fleshbone.item.MedicalActions.of(stack);
+                if (action == null || action.target() != MedicalAction.Target.PART) continue;
+                if (!action.canApply(body, selected) || hasOption(stack)) continue;
+                int ticks = action.useTicks();
                 Component label = stack.getHoverName();
-                MedicalAction.Minigame minigame = item.action().minigame();
-                if (item.action().dangerous() && confirming != stack.getItem()) {
+                MedicalAction.Minigame minigame = action.minigame();
+                if (action.dangerous() && confirming != stack.getItem()) {
                     options.add(new Option(label, stack, BAD, () -> confirming = stack.getItem(), ticks));
-                } else if (item.action().dangerous()) {
+                } else if (action.dangerous()) {
                     Component confirm = Component.translatable("fleshbone.panel.confirm", label);
                     options.add(new Option(confirm, stack, BAD, () -> {
                         confirming = null;
-                        if (FBConfig.MINIGAMES.get()) openMinigame(minigame, stack, s, target, part);
+                        if (FBConfig.MINIGAMES.get()) openMinigame(minigame, stack, s, target, part, body);
                         else start(label, new FBPayloads.Treat(target, part, slotOf(stack), HANDS_QUALITY, 0), ticks);
                     }, ticks));
                 } else if (minigame != MedicalAction.Minigame.NONE && FBConfig.MINIGAMES.get()) {
-                    options.add(new Option(label, stack, TEXT, () -> openMinigame(minigame, stack, s, target, part), ticks));
+                    options.add(new Option(label, stack, TEXT, () -> openMinigame(minigame, stack, s, target, part, body), ticks));
                 } else {
                     options.add(new Option(label, stack, TEXT,
                             () -> start(label, new FBPayloads.Treat(target, part, slotOf(stack), PANEL_QUALITY, 0), ticks), ticks));
@@ -373,8 +389,9 @@ public class HealthPanelScreen extends Screen {
                 int procedure = FBPayloads.Procedure.RESET_DISLOCATION.ordinal();
                 options.add(new Option(label, ItemStack.EMPTY, WARN, () -> {
                     if (FBConfig.MINIGAMES.get()) {
-                        openChild(new ResetMinigame(this, (quality, amount) -> send(new FBPayloads.DoProcedure(target, part, procedure, quality)),
-                                body.derived.totalPain));
+                        float relief = com.fleshbone.sim.system.ChemistrySystem.relief(body.chem) + Math.min(30f, body.chem.analgesic * 0.6f);
+                        openChild(new ResetScreen(this, (quality, amount, mistakes) -> send(new FBPayloads.DoProcedure(target, part, procedure, quality, mistakes)),
+                                body.derived.totalPain, relief));
                     } else {
                         start(label, new FBPayloads.DoProcedure(target, part, procedure, HANDS_QUALITY), 40);
                     }
@@ -385,7 +402,7 @@ public class HealthPanelScreen extends Screen {
                 int procedure = FBPayloads.Procedure.PULL_SHRAPNEL.ordinal();
                 options.add(new Option(label, ItemStack.EMPTY, WARN, () -> {
                     if (FBConfig.MINIGAMES.get()) {
-                        openChild(new ExtractMinigame(this, (quality, amount) -> send(new FBPayloads.DoProcedure(target, part, procedure, quality)), false));
+                        openChild(new ExtractScreen(this, (quality, amount, mistakes) -> send(new FBPayloads.DoProcedure(target, part, procedure, quality, mistakes)), false));
                     } else {
                         start(label, new FBPayloads.DoProcedure(target, part, procedure, HANDS_QUALITY), 40);
                     }
@@ -394,7 +411,7 @@ public class HealthPanelScreen extends Screen {
             if (s.isBandaged()) options.add(removal("bandage", FBPayloads.Device.BANDAGE, target, part));
             if (isExamining() && selected == BodyPart.THORAX && (body.vitals.cardiacArrest || body.vitals.respRate < 2.5f)) {
                 options.add(new Option(Component.translatable("fleshbone.panel.action.cpr"), ItemStack.EMPTY, BAD,
-                        () -> openChild(new CprMinigame(this, patientId)), 0));
+                        () -> openChild(new CprScreen(this, patientId)), 0));
             }
             if (s.splinted) options.add(removal("splint", FBPayloads.Device.SPLINT, target, part));
             if (s.tourniquet) options.add(removal("tourniquet", FBPayloads.Device.TOURNIQUET, target, part));
@@ -402,18 +419,27 @@ public class HealthPanelScreen extends Screen {
         boolean separated = false;
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
-            if (!(stack.getItem() instanceof MedicalItem item) || item.action().target() != MedicalAction.Target.BODY || hasOption(stack)) continue;
+            MedicalAction action = com.fleshbone.item.MedicalActions.of(stack);
+            if (action == null || action.target() != MedicalAction.Target.BODY || hasOption(stack)) continue;
             if (!separated && !options.isEmpty()) {
                 options.add(null);
                 separated = true;
             }
-            if (!item.action().canApply(body, null)) continue;
-            int ticks = item.action().useTicks();
+            if (!action.canApply(body, null)) continue;
+            int ticks = action.useTicks();
             Component label = stack.getHoverName();
-            if (item.action().minigame() == MedicalAction.Minigame.DEFIB && FBConfig.MINIGAMES.get()) {
+            if (action.minigame() != MedicalAction.Minigame.NONE && FBConfig.MINIGAMES.get()) {
                 int itemSlot = slotOf(stack);
-                options.add(new Option(label, stack, TEXT, () -> openChild(new DefibMinigame(this,
-                        (quality, amount) -> send(new FBPayloads.Treat(target, -1, itemSlot, quality, 0)))), ticks));
+                ProcedureScreen.Completion done = (quality, amount, mistakes) -> send(new FBPayloads.Treat(target, -1, itemSlot, quality, amount, mistakes));
+                MedicalAction.Minigame minigame = action.minigame();
+                options.add(new Option(label, stack, TEXT, () -> {
+                    switch (minigame) {
+                        case DEFIB -> openChild(new DefibScreen(this, done, body));
+                        case INFUSION -> openChild(new InfusionScreen(this, done));
+                        case CHEST_DRAIN -> openChild(new ChestDrainScreen(this, done));
+                        default -> start(label, new FBPayloads.Treat(target, -1, itemSlot, PANEL_QUALITY, 0), ticks);
+                    }
+                }, ticks));
             } else {
                 options.add(new Option(label, stack, TEXT, () -> start(label, new FBPayloads.Treat(target, -1, slotOf(stack), PANEL_QUALITY, 0), ticks), ticks));
             }
@@ -441,20 +467,29 @@ public class HealthPanelScreen extends Screen {
         return -1;
     }
 
-    /** Opens the hands-on minigame for an item; the result is applied with the quality achieved. */
-    private void openMinigame(MedicalAction.Minigame minigame, ItemStack stack, PartState s, int target, int part) {
+    /** Opens the hands-on procedure for an item; the result is applied with the quality achieved and the mistakes made. */
+    private void openMinigame(MedicalAction.Minigame minigame, ItemStack stack, PartState s, int target, int part, Body body) {
         int slot = slotOf(stack);
-        MinigameScreen.Completion done = (quality, amount) -> send(new FBPayloads.Treat(target, part, slot, quality, amount));
+        ProcedureScreen.Completion done = (quality, amount, mistakes) -> send(new FBPayloads.Treat(target, part, slot, quality, amount, mistakes));
         switch (minigame) {
             case BANDAGE -> {
                 int length = stack.isDamageableItem() ? stack.getMaxDamage() - stack.getDamageValue() : 8;
-                openChild(new BandageMinigame(this, done, s.skin, length));
+                openChild(new BandageScreen(this, done, s.skin, length));
             }
-            case SUTURE -> openChild(new SutureMinigame(this, done));
-            case EXTRACT -> openChild(new ExtractMinigame(this, done, true));
-            case SAW -> openChild(new SawMinigame(this, done, s.skin));
-            case NONE -> { }
+            case SUTURE -> openChild(new SutureScreen(this, done, s.skin));
+            case EXTRACT -> openChild(new ExtractScreen(this, done, true));
+            case SAW -> openChild(new AmputationScreen(this, done, s.tourniquet || hasTourniquetAbove(body, BodyPart.VALUES[part])));
+            case SPLINT -> openChild(new SplintScreen(this, done, 12f + 25f * Math.min(1f, s.fracture) + (s.isDislocated() ? 10f : 0f)));
+            case CAUTERIZE -> openChild(new CauterizeScreen(this, done, s.bleed));
+            default -> start(stack.getHoverName(), new FBPayloads.Treat(target, part, slot, PANEL_QUALITY, 0), 40);
         }
+    }
+
+    private static boolean hasTourniquetAbove(Body body, BodyPart part) {
+        for (BodyPart p = part; p != null; p = p.parent()) {
+            if (body.part(p).tourniquet) return true;
+        }
+        return false;
     }
 
     private void openChild(Screen child) {
@@ -477,7 +512,7 @@ public class HealthPanelScreen extends Screen {
         boolean chip = isExamining() || ClientBody.vitalsVisible(minecraft.player);
         int listStart = x0 + 160;
         if (!wide) {
-            UniHealth.draw(g, font, body, x0 + 6, y0 + 22, UniHealth.Detail.FULL, chip, null, ClientBody.time());
+            UniHealth.draw(g, font, body, x0 + 6, y0 + 22, UniHealth.Detail.FULL, chip, null, ClientBody.time(), trace());
             listStart = x0 + UniHealth.WIDTH + 14;
         } else {
             drawDetails(g, body, x0 + 10, y0 + 24, chip);
@@ -503,12 +538,21 @@ public class HealthPanelScreen extends Screen {
             y = row(g, x, y, "viscosity", Math.round(v.viscosity) + "", Math.abs(v.viscosity) > 40f ? WARN : TEXT);
             y = row(g, x, y, "fibrillation", Math.round(v.fibrillation) + "%", v.fibrillation > 15f ? BAD : TEXT);
         }
-        y = row(g, x, y, "opioids", Math.round(body.chem.opiate) + " / " + Math.round(body.chem.opiateTolerance),
+        y = row(g, x, y, "opioids", Math.round(ChemistrySystem.relief(body.chem)) + " (" + Math.round(body.chem.opiate) + ")",
+                ChemistrySystem.relief(body.chem) > 50f ? WARN : TEXT);
+        y = row(g, x, y, "tolerance", Math.round(body.chem.opiateTolerance) + " / " + Math.round(body.chem.opiateDependence),
                 ChemistrySystem.withdrawal(body.chem) > 5f ? BAD : TEXT);
+        if (body.chem.caffeine > 1f || body.chem.caffeineDependence > 5f) {
+            y = row(g, x, y, "caffeine", Math.round(body.chem.caffeine) + " / " + Math.round(body.chem.caffeineDependence),
+                    ChemistrySystem.caffeineWithdrawal(body.chem) > 5f ? WARN : TEXT);
+        }
+        y = row(g, x, y, "air", Math.round(body.needs.airTemp) + " °C", body.needs.airTemp < 5f || body.needs.airTemp > 32f ? WARN : TEXT);
+        if (exact) y = row(g, x, y, "temp_trend", Words.format(v.tempTrend, 2) + " °C/min", Math.abs(v.tempTrend) > 0.3f ? WARN : TEXT);
         y = row(g, x, y, "wetness", Math.round(body.needs.wetness) + "%", body.needs.wetness > 45f ? WARN : TEXT);
         y = row(g, x, y, "dirtiness", Math.round(body.needs.dirtiness) + "%", body.needs.dirtiness > 75f ? WARN : TEXT);
         if (body.senses.hearingLoss > 1f) y = row(g, x, y, "hearing", Math.round(body.senses.hearingLoss) + "%", WARN);
         y = row(g, x, y, "trauma", Math.round(body.mind.trauma) + "", body.mind.trauma > 45f ? BAD : TEXT);
+        y = row(g, x, y, "last_stand", com.fleshbone.client.hud.UniHealth.lastStandText(v), v.lastStand > 0f ? WARN : TEXT);
         if (!isExamining()) {
             int quality = body.needs.asleep ? body.needs.sleepQuality : -1;
             if (quality > 0) y = row(g, x, y, "sleep", Component.translatable("fleshbone.sleep_quality." + quality), TEXT);
@@ -539,6 +583,20 @@ public class HealthPanelScreen extends Screen {
             MoodleLayer.draw(g, font, moodle, cx, cy, time);
             g.text(font, Component.translatable(moodle.translationKey()), cx + 19, cy + 4, moodle.type().positive ? GOOD : TEXT, false);
         }
+    }
+
+    /** What the colours of the silhouette mean. */
+    private void drawLegend(GuiGraphicsExtractor g, int x, int y) {
+        if (y + 20 > y0 + panelH - 20) return;
+        legend(g, x, y, BodyDoll.painColor(70f), "pain");
+        legend(g, x + 50, y, 0xFFC80A0A, "bleeding");
+        legend(g, x, y + 10, 0xFF3A2A26, "damage");
+        legend(g, x + 50, y + 10, 0xFF58B030, "infection");
+    }
+
+    private void legend(GuiGraphicsExtractor g, int x, int y, int color, String key) {
+        g.fill(x, y + 1, x + 6, y + 7, color);
+        g.text(font, Component.translatable("fleshbone.panel.legend." + key), x + 9, y, DIM, false);
     }
 
     // ------------------------------------------------------------------------------------------------ skills, equipment, buttons

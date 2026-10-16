@@ -18,8 +18,8 @@ public interface MedicalAction {
         BODY
     }
 
-    /** Hands-on minigame replacing the timer (milestone M5). */
-    enum Minigame { NONE, BANDAGE, SUTURE, EXTRACT, SAW, DEFIB }
+    /** Hands-on procedure replacing the timer in the health panel. */
+    enum Minigame { NONE, BANDAGE, SUTURE, EXTRACT, SAW, DEFIB, SPLINT, INFUSION, CHEST_DRAIN, CAUTERIZE }
 
     /**
      * @param uses       item uses (durability) consumed; 0 consumes nothing

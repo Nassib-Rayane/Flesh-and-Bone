@@ -41,6 +41,8 @@ public final class Vitals {
     public float sepsis;
     /** Core temperature in °C. */
     public float bodyTemp = 37f;
+    /** How fast the core temperature moves, °C per minute (smoothed). */
+    public float tempTrend;
     public BloodType bloodType = BloodType.O_POS;
     /** 0–1 circulation provided by someone doing CPR; decays quickly when compressions stop. */
     public float cprPerfusion;
@@ -76,6 +78,7 @@ public final class Vitals {
         adrenaline = 0f;
         sepsis = 0f;
         bodyTemp = 37f;
+        tempTrend = 0f;
         bloodType = keep;
         cprPerfusion = 0f;
         headDestroyed = false;
@@ -106,6 +109,7 @@ public final class Vitals {
         adrenaline = v.f("adrenaline", adrenaline);
         sepsis = v.f("sepsis", sepsis);
         bodyTemp = v.f("body_temp", bodyTemp);
+        tempTrend = v.f("temp_trend", tempTrend);
         bloodType = v.e("blood_type", bloodType, BloodType.class);
         cprPerfusion = v.f("cpr_perfusion", cprPerfusion);
         headDestroyed = v.b("head_destroyed", headDestroyed);

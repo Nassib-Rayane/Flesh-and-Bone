@@ -60,6 +60,8 @@ public final class FBItems {
             .component(net.minecraft.core.component.DataComponents.CONSUMABLE, net.minecraft.world.item.component.Consumables.defaultDrink().build())
             .usingConvertsTo(net.minecraft.world.item.Items.GLASS_BOTTLE));
     public static final DeferredItem<Item> EMPTY_SYRINGE = ITEMS.registerSimpleItem("empty_syringe", p -> p.stacksTo(16));
+    public static final DeferredItem<net.minecraft.world.item.BlockItem> MEDICINE_CABINET = ITEMS.registerSimpleBlockItem(
+            "medicine_cabinet", com.fleshbone.village.FBVillagers.MEDICINE_CABINET);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.fleshbone"))

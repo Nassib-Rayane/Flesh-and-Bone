@@ -10,6 +10,7 @@ import com.fleshbone.sim.system.BleedingSystem;
 import com.fleshbone.sim.system.BrainSystem;
 import com.fleshbone.sim.system.ChemistrySystem;
 import com.fleshbone.sim.system.CirculationSystem;
+import com.fleshbone.sim.system.DrugEffects;
 import com.fleshbone.sim.system.ConsciousnessSystem;
 import com.fleshbone.sim.system.HealingSystem;
 import com.fleshbone.sim.system.HungerSystem;
@@ -77,7 +78,8 @@ public final class Body {
         needs.carried = env.load;
         needs.exercise = env.exercise.ordinal();
         derived.compute(this);
-        ChemistrySystem.tick(this, dt, settings.drugs());
+        ChemistrySystem.tick(this, settings, dt);
+        DrugEffects.tick(this, env, dt, rng);
         PainSystem.decay(this, dt);
         BleedingSystem.tick(this, env, settings, dt);
         StaminaSystem.tick(this, env, settings, dt);

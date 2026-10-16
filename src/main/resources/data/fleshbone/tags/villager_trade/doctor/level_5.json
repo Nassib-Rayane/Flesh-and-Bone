@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:doctor/5/epinephrine",
+    "fleshbone:doctor/5/defibrillator",
+    "fleshbone:doctor/5/vitals_monitor",
+    "fleshbone:doctor/5/chest_drain",
+    "fleshbone:doctor/5/bone_saw"
+  ]
+}

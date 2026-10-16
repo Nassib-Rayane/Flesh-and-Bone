@@ -37,6 +37,8 @@ public final class FBConfig {
     public static final ModConfigSpec.BooleanValue STAMINA;
     public static final ModConfigSpec.BooleanValue MOOD;
     public static final ModConfigSpec.BooleanValue OPIOID_DEPENDENCE;
+    public static final ModConfigSpec.DoubleValue DRUG_STRENGTH;
+    public static final ModConfigSpec.DoubleValue DEPENDENCE_SPEED;
 
     static {
         SERVER.push("general");
@@ -118,7 +120,13 @@ public final class FBConfig {
         ENERGY = SERVER.comment("Sleepiness: sleep, or pass out from exhaustion.").define("energy", true);
         STAMINA = SERVER.comment("Stamina: sprinting, swimming, fighting and mining tire you out.").define("stamina", true);
         MOOD = SERVER.comment("Mood and trauma.").define("mood", true);
-        OPIOID_DEPENDENCE = SERVER.comment("Repeated opioid use builds tolerance, dependence and withdrawal.").define("opioidDependence", true);
+        OPIOID_DEPENDENCE = SERVER.comment("Repeated opioid (and caffeine) use builds tolerance, dependence and withdrawal.").define("opioidDependence", true);
+        DRUG_STRENGTH = SERVER
+                .comment("Multiplier for every drug dose (morphine, painkillers, epinephrine, caffeine...), effects and side effects alike.")
+                .defineInRange("drugStrength", 1.0, 0.1, 5.0);
+        DEPENDENCE_SPEED = SERVER
+                .comment("Multiplier for how fast tolerance and dependence build up. 1.0 = three or four morphine shots within an hour are enough to be hooked.")
+                .defineInRange("dependenceSpeed", 1.0, 0.0, 10.0);
         SERVER.pop();
     }
 

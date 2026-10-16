@@ -18,6 +18,7 @@ public final class FBSettings {
                 FBConfig.THIRST_SPEED.get().floatValue(),
                 FBConfig.ENERGY_SPEED.get().floatValue(),
                 FBConfig.INFECTION_SPEED.get().floatValue(),
+                FBConfig.DEPENDENCE_SPEED.get().floatValue(),
                 FBConfig.INFECTIONS.get(), FBConfig.HUNGER.get(), FBConfig.THIRST.get(), FBConfig.TEMPERATURE.get(),
                 FBConfig.ENERGY.get(), FBConfig.STAMINA.get(), FBConfig.MOOD.get(), FBConfig.OPIOID_DEPENDENCE.get(),
                 FBConfig.LAST_STAND.get());

@@ -72,6 +72,10 @@ public final class NeedsEvents {
                     : Treatments.eat(body, points, weight, 0f, 0f, 0f, 0f, ThreadLocalRandom.current());
             sick |= result == Treatments.MealResult.SICK;
             overate = result == Treatments.MealResult.OVERATE;
+            // Raw meat and rotten food: the poisoning shows up minutes later
+            if (nutrition != null && nutrition.poisoning() > 0f && ThreadLocalRandom.current().nextFloat() < nutrition.poisoningChance()) {
+                Treatments.poison(body, nutrition.poisoning());
+            }
             // The vanilla bar stays locked: the meal has been counted here
             if (hunger) {
                 player.getFoodData().setFoodLevel(BodyTicker.LOCKED_FOOD);
@@ -80,6 +84,7 @@ public final class NeedsEvents {
         } else if (drink == null) {
             return;
         }
+        if (stack.is(net.minecraft.world.item.Items.MILK_BUCKET)) Treatments.antidote(body);
         if (overate) player.sendOverlayMessage(Component.translatable("fleshbone.message.overate"));
         else if (sick) player.sendOverlayMessage(Component.translatable("fleshbone.message.feel_sick"));
         player.getData(FBAttachments.RUNTIME).dirty = true;

@@ -51,6 +51,13 @@ public final class ScreenEffectsLayer implements GuiLayer {
             if (cold > 0f) vignette(g, w, h, 0xA8D8FF, cold * 0.7f * intensity);
             float heat = clamp((v.bodyTemp - 38.5f) / 3f);
             if (heat > 0f) vignette(g, w, h, 0xFF7A1A, heat * 0.5f * intensity);
+            // Opioid haze, and the clammy sweat of withdrawal
+            float high = clamp((com.fleshbone.sim.system.ChemistrySystem.relief(body.chem) - 10f) / 70f);
+            if (high > 0f) vignette(g, w, h, 0x7A3CC8, high * 0.55f * intensity);
+            float withdrawal = clamp((com.fleshbone.sim.system.ChemistrySystem.withdrawal(body.chem) - 10f) / 50f);
+            if (withdrawal > 0f) vignette(g, w, h, 0xB8C870, withdrawal * 0.4f * intensity);
+            float allergy = clamp(body.chem.anaphylaxis / 60f);
+            if (allergy > 0f) vignette(g, w, h, 0xE03070, allergy * 0.45f * intensity);
         }
 
         // A lost eye takes one side of the view, both take nearly everything

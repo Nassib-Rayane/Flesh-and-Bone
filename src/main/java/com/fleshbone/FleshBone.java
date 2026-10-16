@@ -23,6 +23,7 @@ public final class FleshBone {
     public FleshBone(IEventBus modEventBus, ModContainer modContainer) {
         FBAttachments.register(modEventBus);
         FBDataComponents.register(modEventBus);
+        com.fleshbone.village.FBVillagers.register(modEventBus);
         FBItems.register(modEventBus);
         FBGameTests.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, FBConfig.SERVER_SPEC);

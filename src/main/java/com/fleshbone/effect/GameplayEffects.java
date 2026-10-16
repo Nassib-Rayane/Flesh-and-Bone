@@ -85,7 +85,8 @@ public final class GameplayEffects {
         if (!caps.canSprint() && player.isSprinting()) player.setSprinting(false);
         if (simulated) {
             checkExercise(player, body, runtime, caps);
-            if (body.part(BodyPart.THORAX).isDislocated() && player.getDeltaMovement().horizontalDistanceSqr() > 0.002) {
+            scratchyPlants(player, body, runtime);
+            if (body.part(BodyPart.THORAX).isDislocated() && runtime.moveSpeed > 0.8f) {
                 // A dislocated spine hurts with every step
                 body.part(BodyPart.THORAX).pain = Math.min(150f, body.part(BodyPart.THORAX).pain + 0.08f);
             }
@@ -116,7 +117,7 @@ public final class GameplayEffects {
         String reason = null;
         if (caps.incapacitated() || body.needs.asleep) reason = "fleshbone.message.exercise.stopped";
         else if (body.needs.stamina < EXERCISE_MIN_STAMINA) reason = "fleshbone.message.exercise.exhausted";
-        else if (!player.onGround() || player.isInWater() || player.getDeltaMovement().horizontalDistanceSqr() > 0.003) {
+        else if (!player.onGround() || player.isInWater() || runtime.moveSpeed > 1f) {
             reason = "fleshbone.message.exercise.stopped";
         }
         if (reason != null) {
@@ -253,9 +254,36 @@ public final class GameplayEffects {
         }
     }
 
+    /**
+     * Mining is slower when weak; pounding stone, ore or metal with a bare fist hurts the hand: a dull ache while
+     * mining, a bruise every few seconds of it.
+     */
     @SubscribeEvent
     static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
-        if (BodyTicker.simulated(event.getEntity()) && capabilities(event.getEntity()).incapacitated()) event.setNewSpeed(0f);
+        Player player = event.getEntity();
+        if (!BodyTicker.simulated(player)) return;
+        if (capabilities(player).incapacitated()) {
+            event.setNewSpeed(0f);
+            return;
+        }
+        if (player instanceof ServerPlayer server && player.getMainHandItem().isEmpty()
+                && event.getState().is(com.fleshbone.damage.FBTags.Blocks.HURTS_BARE_HANDS)) {
+            BodyRuntime runtime = server.getData(FBAttachments.RUNTIME);
+            long now = server.level().getGameTime();
+            if (now != runtime.lastPunchTick) {
+                runtime.lastPunchTick = now;
+                Body body = server.getData(FBAttachments.BODY);
+                BodyPart hand = mainSide(player) == Side.LEFT ? BodyPart.HAND_L : BodyPart.HAND_R;
+                PartState s = body.part(hand);
+                s.pain = Math.min(150f, s.pain + 0.04f);
+                if (++runtime.punchTicks >= 60) {
+                    runtime.punchTicks = 0;
+                    body.injure(com.fleshbone.sim.injury.Injury.of(hand, com.fleshbone.sim.injury.InjuryKind.BLUNT, 3f),
+                            java.util.concurrent.ThreadLocalRandom.current());
+                    runtime.dirty = true;
+                }
+            }
+        }
     }
 
     @SubscribeEvent
@@ -267,6 +295,74 @@ public final class GameplayEffects {
         SkillSystem.gain(body, Skills.Stat.STRENGTH, 0.1f);
         // Digging soil, sand and gravel gets you dirty
         if (event.getState().is(net.minecraft.tags.BlockTags.MINEABLE_WITH_SHOVEL)) HygieneSystem.soil(body, 1f);
+        if (player.getMainHandItem().isEmpty()) {
+            BodyPart hand = mainSide(player) == Side.LEFT ? BodyPart.HAND_L : BodyPart.HAND_R;
+            java.util.concurrent.ThreadLocalRandom rng = java.util.concurrent.ThreadLocalRandom.current();
+            if (event.getState().is(com.fleshbone.damage.FBTags.Blocks.SHARP_WHEN_BROKEN)) {
+                // Glass shatters into the fist: a cut, and sometimes shards stuck in it
+                body.injure(new com.fleshbone.sim.injury.Injury(hand, com.fleshbone.sim.injury.InjuryKind.CUT, 9f + rng.nextFloat() * 7f, 5f, 0, 0f), rng);
+                if (rng.nextFloat() < 0.35f) {
+                    body.part(hand).shrapnel = Math.min(9, body.part(hand).shrapnel + 1);
+                    body.emit(com.fleshbone.sim.BodyEvent.Type.SHRAPNEL, hand);
+                }
+                player.sendOverlayMessage(Component.translatable("fleshbone.message.glass_cut"));
+            } else if (event.getState().is(com.fleshbone.damage.FBTags.Blocks.HURTS_BARE_HANDS)) {
+                body.injure(com.fleshbone.sim.injury.Injury.of(hand, com.fleshbone.sim.injury.InjuryKind.BLUNT, 4f), rng);
+            }
+            player.getData(FBAttachments.RUNTIME).dirty = true;
+        }
+    }
+
+    /** Wading through dry bushes and roses scratches the legs, unless leggings or boots cover them. */
+    static void scratchyPlants(ServerPlayer player, Body body, BodyRuntime runtime) {
+        if (++runtime.scratchTimer % 10 != 0 || runtime.moveSpeed < 1f) return;
+        net.minecraft.world.level.block.state.BlockState feet = player.level().getBlockState(player.blockPosition());
+        if (!feet.is(com.fleshbone.damage.FBTags.Blocks.SCRATCHY_PLANTS)) return;
+        java.util.concurrent.ThreadLocalRandom rng = java.util.concurrent.ThreadLocalRandom.current();
+        boolean sprinting = player.isSprinting();
+        if (rng.nextFloat() > (sprinting ? 0.6f : 0.3f)) return;
+        BodyPart part = rng.nextBoolean() ? (rng.nextBoolean() ? BodyPart.SHIN_L : BodyPart.SHIN_R) : (rng.nextBoolean() ? BodyPart.THIGH_L : BodyPart.THIGH_R);
+        for (net.minecraft.world.entity.EquipmentSlot slot : com.fleshbone.damage.PartArmor.coveringSlots(part)) {
+            if (!player.getItemBySlot(slot).isEmpty()) return;
+        }
+        body.injure(new com.fleshbone.sim.injury.Injury(part, com.fleshbone.sim.injury.InjuryKind.CUT, sprinting ? 4f : 2.5f, 6f, 0, 0f), rng);
+        player.level().playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.PLAYER_HURT_SWEET_BERRY_BUSH, net.minecraft.sounds.SoundSource.PLAYERS, 0.5f, 1.3f);
+        player.sendOverlayMessage(Component.translatable("fleshbone.message.scratched"));
+        runtime.dirty = true;
+    }
+
+    /** Washing at a water cauldron (empty hand), or pouring a water bucket over yourself (sneaking). */
+    @SubscribeEvent
+    static void onUseBlockToWash(PlayerInteractEvent.RightClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || !BodyTicker.simulated(player)) return;
+        if (event.getHand() != InteractionHand.MAIN_HAND || !player.getMainHandItem().isEmpty()) return;
+        net.minecraft.world.level.block.state.BlockState state = player.level().getBlockState(event.getPos());
+        if (!state.is(net.minecraft.world.level.block.Blocks.WATER_CAULDRON)) return;
+        Body body = player.getData(FBAttachments.BODY);
+        HygieneSystem.wash(body, 40f);
+        body.needs.wetness = Math.min(100f, body.needs.wetness + 10f);
+        net.minecraft.world.level.block.LayeredCauldronBlock.lowerFillLevel(state, player.level(), event.getPos());
+        player.level().playSound(null, event.getPos(), net.minecraft.sounds.SoundEvents.GENERIC_SPLASH, net.minecraft.sounds.SoundSource.PLAYERS, 0.6f, 1.2f);
+        player.sendOverlayMessage(Component.translatable("fleshbone.message.washed"));
+        player.getData(FBAttachments.RUNTIME).dirty = true;
+        event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    static void onDouse(PlayerInteractEvent.RightClickItem event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || !BodyTicker.simulated(player) || !player.isCrouching()) return;
+        net.minecraft.world.item.ItemStack stack = event.getItemStack();
+        if (!stack.is(net.minecraft.world.item.Items.WATER_BUCKET)) return;
+        Body body = player.getData(FBAttachments.BODY);
+        HygieneSystem.wash(body, 30f);
+        body.needs.wetness = Math.min(100f, body.needs.wetness + 70f);
+        body.vitals.bodyTemp -= 0.4f;
+        player.clearFire();
+        if (!player.getAbilities().instabuild) player.setItemInHand(event.getHand(), new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BUCKET));
+        player.level().playSound(null, player.blockPosition(), net.minecraft.sounds.SoundEvents.GENERIC_SPLASH, net.minecraft.sounds.SoundSource.PLAYERS, 1f, 1f);
+        player.sendOverlayMessage(Component.translatable("fleshbone.message.doused"));
+        player.getData(FBAttachments.RUNTIME).dirty = true;
+        event.setCanceled(true);
     }
 
     /** Effort hurts what is broken: the working arm, the ribs or spine, and a broken neck (C:U: +3 per blow). */

@@ -72,6 +72,13 @@ public final class FBGameTests {
         test("carried_weight_counts_the_inventory", FBGameTests::carriedWeightCountsTheInventory);
         test("push_ups_train_strength", FBGameTests::pushUpsTrainStrength);
         test("sleeping_on_the_ground_and_pain_wakes", FBGameTests::sleepingOnTheGroundAndPainWakes);
+        test("unconscious_medic_cannot_treat", FBGameTests::unconsciousMedicCannotTreat);
+        test("bare_hand_glass_cuts", FBGameTests::bareHandGlassCuts);
+        test("dry_bushes_scratch_legs", FBGameTests::dryBushesScratchLegs);
+        test("poison_effect_sickens", FBGameTests::poisonEffectSickens);
+        test("doctors_take_the_cabinet_and_sell_supplies", FBGameTests::doctorsTakeTheCabinetAndSellSupplies);
+        test("flint_and_steel_cauterizes", FBGameTests::flintAndSteelCauterizes);
+        test("botched_procedures_harm_the_patient", FBGameTests::botchedProceduresHarmThePatient);
     }
 
     private FBGameTests() {}
@@ -402,6 +409,138 @@ public final class FBGameTests {
             body.derived.compute(body);
             BodyTicker.tickPlayer(player);
             helper.assertTrue(!body.needs.asleep, "pain wakes the body up");
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** Out cold, nobody bandages anything, not even themselves. */
+    private static void unconsciousMedicCannotTreat(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            Body body = player.getData(FBAttachments.BODY);
+            body.part(BodyPart.FOREARM_L).skin = 50f;
+            body.part(BodyPart.FOREARM_L).bleed = 30f;
+            body.vitals.consciousness = 10f;
+            ItemStack bandage = new ItemStack(FBItems.BANDAGE.get());
+            helper.assertFalse(TreatmentService.treat(player, player, bandage, BodyPart.FOREARM_L, 1f), "an unconscious body cannot treat");
+            helper.assertTrue(!body.part(BodyPart.FOREARM_L).isBandaged(), "no bandage applied");
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** Breaking glass with a bare fist cuts the hand. */
+    private static void bareHandGlassCuts(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        net.minecraft.core.BlockPos glass = new net.minecraft.core.BlockPos(2, 1, 1);
+        helper.setBlock(glass, net.minecraft.world.level.block.Blocks.GLASS);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            player.gameMode.destroyBlock(helper.absolutePos(glass));
+            Body body = player.getData(FBAttachments.BODY);
+            BodyPart hand = player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT ? BodyPart.HAND_L : BodyPart.HAND_R;
+            helper.assertTrue(body.part(hand).skin < 100f, "the glass cut the hand: " + body.part(hand).skin);
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** Wading through a dead bush scratches unprotected legs. */
+    private static void dryBushesScratchLegs(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.setBlock(new net.minecraft.core.BlockPos(1, 0, 1), net.minecraft.world.level.block.Blocks.SAND);
+        helper.setBlock(new net.minecraft.core.BlockPos(1, 1, 1), net.minecraft.world.level.block.Blocks.DEAD_BUSH);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            // Pace back and forth inside the bush, as a real client moves (the server never sees its velocity)
+            Vec3 start = player.position();
+            // 30 rolls at 30 %: practically certain
+            for (int tick = 0; tick < 300; tick++) {
+                player.setPos(start.x + (tick % 2 == 0 ? -0.1 : 0.1), start.y, start.z);
+                BodyTicker.tickPlayer(player);
+            }
+            Body body = player.getData(FBAttachments.BODY);
+            float legs = body.part(BodyPart.SHIN_L).skin + body.part(BodyPart.SHIN_R).skin + body.part(BodyPart.THIGH_L).skin + body.part(BodyPart.THIGH_R).skin;
+            helper.assertTrue(legs < 400f, "scratched legs: " + legs);
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** The vanilla Poison effect turns the stomach. */
+    private static void poisonEffectSickens(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 400, 1));
+            for (int tick = 0; tick < 40; tick++) BodyTicker.tickPlayer(player);
+            Body body = player.getData(FBAttachments.BODY);
+            helper.assertTrue(body.needs.sickness > 0.3f, "poisoned: " + body.needs.sickness);
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** The doctor profession exists, its cabinet is a job site, and doctors sell the mod's supplies. */
+    private static void doctorsTakeTheCabinetAndSellSupplies(GameTestHelper helper) {
+        var access = helper.getLevel().registryAccess();
+        var professions = access.lookupOrThrow(Registries.VILLAGER_PROFESSION);
+        var doctor = professions.get(FleshBone.id("doctor")).orElse(null);
+        helper.assertTrue(doctor != null, "the doctor profession is registered");
+        var pois = access.lookupOrThrow(Registries.POINT_OF_INTEREST_TYPE);
+        var poi = pois.get(com.fleshbone.village.FBVillagers.DOCTOR_POI_KEY).orElse(null);
+        helper.assertTrue(poi != null && poi.is(net.minecraft.tags.PoiTypeTags.ACQUIRABLE_JOB_SITE), "the cabinet is a job site");
+        helper.assertTrue(poi.value().is(com.fleshbone.village.FBVillagers.MEDICINE_CABINET.get().defaultBlockState()), "for the cabinet block");
+        net.minecraft.world.entity.npc.villager.Villager villager = helper.spawnWithNoFreeWill(EntityType.VILLAGER, 2, 1, 2);
+        villager.setVillagerData(villager.getVillagerData().withProfession(doctor));
+        boolean supplies = villager.getOffers().stream().anyMatch(offer ->
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getResult().getItem()).getNamespace().equals(FleshBone.MODID)
+                        || net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offer.getCostA().getItem()).getNamespace().equals("minecraft"));
+        helper.assertTrue(!villager.getOffers().isEmpty() && supplies, "a level 1 doctor has trades: " + villager.getOffers().size());
+        helper.succeed();
+    }
+
+    /** Flint and steel from the health panel sears a bleeding wound shut. */
+    private static void flintAndSteelCauterizes(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            Body body = player.getData(FBAttachments.BODY);
+            body.part(BodyPart.THIGH_L).skin = 40f;
+            body.part(BodyPart.THIGH_L).bleed = 50f;
+            ItemStack flint = new ItemStack(Items.FLINT_AND_STEEL);
+            helper.assertTrue(TreatmentService.treat(player, player, flint, BodyPart.THIGH_L, 0.8f), "cauterized");
+            helper.assertTrue(body.part(BodyPart.THIGH_L).bleed == 0f, "bleeding stopped");
+            helper.assertTrue(body.part(BodyPart.THIGH_L).skin < 40f, "burnt skin");
+            helper.assertTrue(flint.getDamageValue() == 1, "the flint and steel wore");
+            remove(player);
+            helper.succeed();
+        });
+    }
+
+    /** Mistakes made during a procedure reach the patient, even when the medic gives up (and keeps the bandage). */
+    private static void botchedProceduresHarmThePatient(GameTestHelper helper) {
+        ServerPlayer player = survivalPlayer(helper);
+        helper.runAfterDelay(SETTLE_TICKS, () -> {
+            Body body = player.getData(FBAttachments.BODY);
+            PartState thigh = body.part(BodyPart.THIGH_L);
+            thigh.skin = 60f;
+            thigh.bleed = 10f;
+            ItemStack bandage = new ItemStack(FBItems.BANDAGE.get());
+            com.fleshbone.sim.procedure.Mistakes mistakes = new com.fleshbone.sim.procedure.Mistakes();
+            mistakes.pain = 2;
+            mistakes.tear = 2;
+            mistakes.dirt = 2;
+            float pain = thigh.pain;
+            helper.assertFalse(TreatmentService.treat(player, player, bandage, BodyPart.THIGH_L, -1f, 0, mistakes.pack()), "given up");
+            helper.assertTrue(bandage.getDamageValue() == 0 && !thigh.isBandaged(), "nothing used, nothing applied");
+            helper.assertTrue(thigh.pain >= pain + 9f, "clumsy hands hurt: " + thigh.pain);
+            helper.assertTrue(thigh.skin < 60f && thigh.bleed > 10f, "torn skin bleeds: " + thigh.skin + " / " + thigh.bleed);
+            helper.assertTrue(thigh.contamination >= 10f, "dirt pushed in: " + thigh.contamination);
+            com.fleshbone.sim.procedure.Mistakes dirty = new com.fleshbone.sim.procedure.Mistakes();
+            dirty.dirt = 3;
+            float contamination = thigh.contamination;
+            helper.assertTrue(TreatmentService.treat(player, player, bandage, BodyPart.THIGH_L, 0.9f, 4, dirty.pack()), "dressed");
+            helper.assertTrue(thigh.isBandaged(), "the dressing is on");
+            helper.assertTrue(thigh.contamination >= contamination + 14f, "but dirty: " + thigh.contamination);
             remove(player);
             helper.succeed();
         });

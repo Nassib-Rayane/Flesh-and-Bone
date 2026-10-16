@@ -62,8 +62,9 @@ public record Capabilities(
         float stuffed = n.hunger > HungerSystem.FULL ? 0.95f : 1f;
         float bulk = Math.abs(weight) >= 3 ? 0.9f : 1f;
         float retching = n.vomiting > 0f ? 0.05f : 1f;
+        float sedated = 1f - Math.min(0.25f, com.fleshbone.sim.system.ChemistrySystem.relief(body.chem) * 0.003f);
         float move = incapacitated ? 0f
-                : legs * core * painMove * consciousnessMove * staminaMove * lethargy * load * stuffed * bulk * retching;
+                : legs * core * painMove * consciousnessMove * staminaMove * lethargy * load * stuffed * bulk * retching * sedated;
 
         float jump = Math.min(legJump(body, Side.LEFT), legJump(body, Side.RIGHT));
         if (pain > PainSystem.AGONY) jump *= 0.7f;
@@ -82,7 +83,7 @@ public record Capabilities(
                 * SkillSystem.attackMultiplier(body.skills);
         float gloom = mood < -30f ? 0.9f : 1f;
         float attackSpeed = Math.max(0.3f, consciousness / 100f) * (pain > PainSystem.AGONY ? 0.8f : 1f)
-                * (0.6f + 0.4f * strength) * gloom / (1f + over);
+                * (0.6f + 0.4f * strength) * gloom * sedated / (1f + over);
         float coldHands = v.bodyTemp < 34f ? 0.8f : 1f;
         float mining = armMining(body, mainSide) * painAttack * (0.4f + 0.6f * strength) * gloom * coldHands;
 

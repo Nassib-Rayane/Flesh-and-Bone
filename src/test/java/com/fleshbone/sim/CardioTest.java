@@ -8,8 +8,6 @@ import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
-import com.fleshbone.sim.minigame.ChargeMeter;
-import com.fleshbone.sim.minigame.RhythmTracker;
 import com.fleshbone.sim.system.CirculationSystem;
 import com.fleshbone.sim.treatment.Treatments;
 
@@ -110,25 +108,4 @@ class CardioTest {
         assertTrue(body.chem.opiate < 15f);
     }
 
-    @Test
-    void chargeMeterRewardsTheTopBand() {
-        ChargeMeter meter = new ChargeMeter(1f);
-        meter.press(0f);
-        assertEquals(1f, meter.release(0.9f), 1e-6);
-        meter.press(0f);
-        assertTrue(meter.release(0.3f) < 0.3f, "undercharged");
-        meter.press(0f);
-        assertTrue(meter.release(1.25f) < 0.3f, "overcharged");
-    }
-
-    @Test
-    void steadyRhythmGivesFullPerfusion() {
-        RhythmTracker rhythm = new RhythmTracker();
-        float beat = 60f / RhythmTracker.TARGET_BPM;
-        for (int i = 0; i < 20; i++) rhythm.compress(i * beat);
-        assertTrue(rhythm.perfusion(19 * beat) > 0.9f, "on-beat compressions: " + rhythm.perfusion(19 * beat));
-        RhythmTracker slow = new RhythmTracker();
-        for (int i = 0; i < 10; i++) slow.compress(i * 1.2f);
-        assertTrue(slow.perfusion(9 * 1.2f) < 0.3f, "one compression a second is too slow");
-    }
 }

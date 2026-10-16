@@ -9,6 +9,7 @@ import com.fleshbone.sim.Environment;
 import com.fleshbone.sim.system.SleepSystem;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.common.Tags;
 
 /** Reads what the body needs to know about the world around a player. Expensive parts are sampled once a second. */
 public final class EnvironmentSampler {
@@ -51,6 +53,7 @@ public final class EnvironmentSampler {
             float speed = (float) (Math.sqrt(dx * dx + dz * dz) * 20.0);
             env.moveSpeed = speed > 40f ? 0f : speed;
         }
+        runtime.moveSpeed = env.moveSpeed;
         runtime.lastX = x;
         runtime.lastZ = z;
         runtime.hasLastPosition = true;
@@ -61,6 +64,8 @@ public final class EnvironmentSampler {
             sampleSlow(player, runtime);
         }
         env.ambientTemp = runtime.ambientTemp;
+        env.humidity = runtime.humidity;
+        env.waterTemp = runtime.waterTemp;
         env.heatTarget = runtime.heatTarget;
         env.heatStrength = runtime.heatStrength;
         env.insulation = runtime.insulation;
@@ -78,6 +83,8 @@ public final class EnvironmentSampler {
         runtime.skyVisible = level.canSeeSky(pos.above());
         runtime.light = level.getMaxLocalRawBrightness(pos.above());
         runtime.ambientTemp = airTemperature(level, pos, runtime.skyVisible);
+        runtime.humidity = humidity(level.getBiome(pos).value());
+        runtime.waterTemp = waterTemperature(level, pos, runtime.ambientTemp);
         heatAround(level, pos, runtime);
         float insulation = 0f;
         for (EquipmentSlot slot : ARMOR) {
@@ -90,30 +97,84 @@ public final class EnvironmentSampler {
         runtime.load = FBConfig.ENCUMBRANCE.get() ? ItemWeights.carried(player) : 0f;
         boolean pet = !level.getEntitiesOfClass(TamableAnimal.class, new AABB(pos).inflate(8),
                 animal -> animal.isOwnedBy(player)).isEmpty();
-        runtime.comfort = pet || (runtime.heatStrength > 0.25f && runtime.heatTarget > 30f);
+        runtime.comfort = pet || (runtime.heatStrength > 0.25f && runtime.heatTarget > 30f) || musicNearby(level, pos);
         runtime.sleepQuality = sleepQuality(player, runtime);
     }
 
     /**
-     * Felt air temperature in °C from the biome (adjusted for altitude), day and night, rain and depth.
-     * Plains feel about 18 °C, deserts 36 °C by day, snowy plains below freezing; caves tend to 12 °C.
+     * Air temperature in °C from the biome and the time of day, after a curve that reads like real climates: snowy
+     * plains −5, taiga 5, meadows 12, forests 15, plains 18, swamps 22, jungles 27, savannas 32, badlands 35, deserts
+     * 38 by day. Nights cool down more in dry biomes (a desert drops about 25 °C) than in humid ones; the coolest hour
+     * is before dawn, the warmest early afternoon. Direct sun adds 3 °C, rain takes some away, houses keep the air
+     * near 18 °C and caves near 12 °C. Altitude cools.
      */
     static float airTemperature(ServerLevel level, BlockPos pos, boolean skyVisible) {
-        Biome biome = level.getBiome(pos).value();
+        Holder<Biome> holder = level.getBiome(pos);
+        Biome biome = holder.value();
+        if (level.dimension() == Level.NETHER) return Math.max(42f, dayTemperature(biome.getBaseTemperature()));
+        if (level.dimension() == Level.END) return 5f;
         float t = biome.getBaseTemperature();
         if (pos.getY() > 80) t -= (pos.getY() - 80) * 0.00167f;
-        float celsius = t <= 1f ? 30f * t - 6f : 24f + 12f * (t - 1f);
-        if (level.dimension() == Level.NETHER) {
-            celsius = Math.max(celsius, 42f);
-        } else if (level.dimension() == Level.END) {
-            celsius = 5f;
-        } else {
-            if (!level.isBrightOutside()) celsius -= t > 1.5f ? 14f : 7f;
-            else celsius += 3f;
-            if (level.isRainingAt(pos.above())) celsius -= biome.coldEnoughToSnow(pos, level.getSeaLevel()) ? 6f : 4f;
-            if (!skyVisible && pos.getY() < level.getSeaLevel()) celsius = celsius * 0.3f + 12f * 0.7f;
+        float celsius = dayTemperature(t);
+        if (holder.is(Tags.Biomes.IS_DESERT)) celsius += 3f;
+        else if (holder.is(Tags.Biomes.IS_SAVANNA)) celsius -= 3f;
+        if (holder.is(Tags.Biomes.IS_SWAMP)) celsius += 4f;
+        else if (holder.is(Tags.Biomes.IS_JUNGLE)) celsius += 2f;
+        float humidity = humidity(biome);
+        // Daily cycle: warmest around 14:00 (clock 8000), coolest around 02:00
+        long clock = Math.floorMod(level.getOverworldClockTime(), 24000L);
+        float warmth = 0.5f + 0.5f * (float) Math.cos(2.0 * Math.PI * (clock - 8000L) / 24000.0);
+        float nightDrop = 8f + 17f * (1f - humidity);
+        celsius -= nightDrop * (1f - warmth);
+        boolean raining = level.isRainingAt(pos.above());
+        if (skyVisible && level.isBrightOutside() && !raining) celsius += 3f;
+        if (raining) celsius -= biome.coldEnoughToSnow(pos, level.getSeaLevel()) ? 6f : 4f;
+        if (!skyVisible) {
+            // Sheltered: houses buffer toward 18 °C, caves toward 12 °C
+            celsius = pos.getY() < level.getSeaLevel() ? celsius * 0.3f + 12f * 0.7f : celsius * 0.4f + 18f * 0.6f;
         }
         return celsius;
+    }
+
+    /** Daytime air temperature for a biome temperature value. */
+    static float dayTemperature(float t) {
+        if (t <= 0f) return -5f + 20f * t;
+        if (t < 0.25f) return -5f + 40f * t;
+        if (t < 0.5f) return 5f + 28f * (t - 0.25f);
+        if (t < 0.8f) return 12f + 20f * (t - 0.5f);
+        if (t < 1f) return 18f + 45f * (t - 0.8f);
+        return 27f + 8f * Math.min(1f, t - 1f);
+    }
+
+    /** 0–1 humidity from the biome's downfall. */
+    static float humidity(Biome biome) {
+        return Math.max(0f, Math.min(1f, biome.getModifiedClimateSettings().downfall()));
+    }
+
+    /** Water is colder than the air: 4 °C less, 8 °C less in deep or cold oceans, warm oceans are mild. */
+    static float waterTemperature(ServerLevel level, BlockPos pos, float air) {
+        Holder<Biome> holder = level.getBiome(pos);
+        if (holder.is(net.minecraft.world.level.biome.Biomes.WARM_OCEAN)) return Math.max(air - 2f, 24f);
+        float water = air - 4f;
+        if (holder.is(net.minecraft.tags.BiomeTags.IS_DEEP_OCEAN) || holder.is(Tags.Biomes.IS_COLD)) water -= 4f;
+        if (pos.getY() < level.getSeaLevel() - 10) water -= 2f;
+        return Math.max(1f, water);
+    }
+
+    /** A jukebox playing within 8 blocks lifts the mood. */
+    static boolean musicNearby(ServerLevel level, BlockPos center) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dy = -3; dy <= 3; dy++) {
+                for (int dz = -8; dz <= 8; dz++) {
+                    cursor.set(center.getX() + dx, center.getY() + dy, center.getZ() + dz);
+                    BlockState state = level.getBlockState(cursor);
+                    if (state.is(net.minecraft.world.level.block.Blocks.JUKEBOX)
+                            && state.getValue(net.minecraft.world.level.block.JukeboxBlock.HAS_RECORD)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

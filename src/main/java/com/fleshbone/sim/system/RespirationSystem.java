@@ -80,7 +80,8 @@ public final class RespirationSystem {
                 - (relief > ChemistrySystem.OVERDOSE ? 20f + (relief - ChemistrySystem.OVERDOSE) * 0.5f : 0f)
                 - 0.1f * Math.max(0f, v.systolic - 140f)
                 - 0.125f * v.hemothorax
-                - 0.1f * v.fibrillation;
+                - 0.1f * v.fibrillation
+                - 0.12f * c.anaphylaxis;
         // Air hunger: low oxygen makes the body breathe harder
         if (v.spo2 < 90f) rate += (90f - v.spo2) * 0.2f;
         if (v.bodyTemp > 38f) rate += (v.bodyTemp - 38f) * 2f;
@@ -98,6 +99,7 @@ public final class RespirationSystem {
                 - Math.max(0f, Math.abs(v.viscosity) - 40f) * 0.4f
                 - v.hemothorax * 0.3f
                 - body.chem.venom * 0.5f
+                - body.chem.anaphylaxis * 0.25f
                 - (v.embolism ? 25f : 0f);
         return SimMath.clamp(max, 0f, 100f);
     }

@@ -14,8 +14,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 public final class FBPayloads {
     private FBPayloads() {}
 
-    /** Client → server: apply the medical item in inventory {@code slot} to a body part of {@code targetId}. */
-    public record Treat(int targetId, int part, int slot, float quality, int amount) implements CustomPacketPayload {
+    /**
+     * Client → server: apply the medical item in inventory {@code slot} to a body part of {@code targetId}.
+     * {@code mistakes} is {@code Mistakes.pack()} of what went wrong during the procedure.
+     */
+    public record Treat(int targetId, int part, int slot, float quality, int amount, int mistakes) implements CustomPacketPayload {
         public static final Type<Treat> TYPE = new Type<>(FleshBone.id("treat"));
         public static final StreamCodec<ByteBuf, Treat> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Treat::targetId,
@@ -23,7 +26,12 @@ public final class FBPayloads {
                 ByteBufCodecs.VAR_INT, Treat::slot,
                 ByteBufCodecs.FLOAT, Treat::quality,
                 ByteBufCodecs.VAR_INT, Treat::amount,
+                ByteBufCodecs.VAR_INT, Treat::mistakes,
                 Treat::new);
+
+        public Treat(int targetId, int part, int slot, float quality, int amount) {
+            this(targetId, part, slot, quality, amount, 0);
+        }
 
         @Override public Type<Treat> type() { return TYPE; }
     }
@@ -32,14 +40,19 @@ public final class FBPayloads {
     public enum Procedure { RESET_DISLOCATION, PULL_SHRAPNEL }
 
     /** Client → server: perform a procedure on a body part of {@code targetId}. */
-    public record DoProcedure(int targetId, int part, int procedure, float quality) implements CustomPacketPayload {
+    public record DoProcedure(int targetId, int part, int procedure, float quality, int mistakes) implements CustomPacketPayload {
         public static final Type<DoProcedure> TYPE = new Type<>(FleshBone.id("procedure"));
         public static final StreamCodec<ByteBuf, DoProcedure> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, DoProcedure::targetId,
                 ByteBufCodecs.VAR_INT, DoProcedure::part,
                 ByteBufCodecs.VAR_INT, DoProcedure::procedure,
                 ByteBufCodecs.FLOAT, DoProcedure::quality,
+                ByteBufCodecs.VAR_INT, DoProcedure::mistakes,
                 DoProcedure::new);
+
+        public DoProcedure(int targetId, int part, int procedure, float quality) {
+            this(targetId, part, procedure, quality, 0);
+        }
 
         @Override public Type<DoProcedure> type() { return TYPE; }
     }
@@ -60,11 +73,13 @@ public final class FBPayloads {
     }
 
     /** Client → server: CPR in progress on {@code targetId}, delivering {@code perfusion} (0–1). Sent about twice a second. */
-    public record Cpr(int targetId, float perfusion) implements CustomPacketPayload {
+    /** {@code cracks}: ribs cracked by over-deep compressions since the last update. */
+    public record Cpr(int targetId, float perfusion, int cracks) implements CustomPacketPayload {
         public static final Type<Cpr> TYPE = new Type<>(FleshBone.id("cpr"));
         public static final StreamCodec<ByteBuf, Cpr> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Cpr::targetId,
                 ByteBufCodecs.FLOAT, Cpr::perfusion,
+                ByteBufCodecs.VAR_INT, Cpr::cracks,
                 Cpr::new);
 
         @Override public Type<Cpr> type() { return TYPE; }

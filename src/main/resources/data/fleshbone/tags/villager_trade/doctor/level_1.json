@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "fleshbone:doctor/1/buy_paper",
+    "fleshbone:doctor/1/buy_string",
+    "fleshbone:doctor/1/rags",
+    "fleshbone:doctor/1/bandage",
+    "fleshbone:doctor/1/painkillers"
+  ]
+}

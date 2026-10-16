@@ -53,6 +53,12 @@ public final class UniHealth {
      * @return the height drawn
      */
     public static int draw(GuiGraphicsExtractor g, Font font, Body body, int x, int y, Detail detail, boolean exact, BodyPart limb, float time) {
+        return draw(g, font, body, x, y, detail, exact, limb, time, EcgTrace.local());
+    }
+
+    /** @param trace the ECG strip of this body (the local player's, or an examined patient's) */
+    public static int draw(GuiGraphicsExtractor g, Font font, Body body, int x, int y, Detail detail, boolean exact, BodyPart limb,
+                           float time, EcgTrace trace) {
         Vitals v = body.vitals;
         Needs n = body.needs;
         Derived d = body.derived;
@@ -89,7 +95,7 @@ public final class UniHealth {
             cy += LINE;
             barPair(g, font, x, cy, "thirst", Math.min(1f, n.thirst / 150f), 0xFF40A0FF, lit(Math.round(n.thirst) + ""),
                     level(n.thirst < 10f || n.thirst > ThirstSystem.WATER_INTOXICATION, n.thirst < ThirstSystem.DEHYDRATED || n.thirst > ThirstSystem.OVERHYDRATED),
-                    "temperature", exact ? lit(Words.format(v.bodyTemp, 1) + "°C") : Words.temperature(v.bodyTemp),
+                    "temperature", exact ? lit(Words.format(v.bodyTemp, 1) + "°" + trend(v.tempTrend)) : Words.temperature(v.bodyTemp),
                     level(v.bodyTemp < 30f || v.bodyTemp > 41f, v.bodyTemp < 35.5f || v.bodyTemp > 38.5f), time);
             cy += LINE;
             pair(g, font, x, cy, "stamina", pct(n.stamina), level(n.stamina < 10f, n.stamina < 35f),
@@ -103,7 +109,7 @@ public final class UniHealth {
             cy += LINE;
             pair(g, font, x, cy, "breathing", exact ? lit(Math.round(v.respRate) + "/min") : Words.breathing(v),
                     level(v.respRate < 2.5f, v.respRate < 12.5f || v.respRate > 35f),
-                    "stand", lastStandText(v), v.lastStand > 0f ? Level.WARN : Level.OK, time);
+                    "air", lit(Math.round(n.airTemp) + "°C"), level(n.airTemp < -15f || n.airTemp > 45f, n.airTemp < 5f || n.airTemp > 32f), time);
             cy += LINE;
             label(g, font, "load", x + PAD, cy);
             bar(g, x + 44, cy + 2, WIDTH - 44 - 62 - PAD, Math.min(1f, n.carried / Math.max(1f, d.capacity) / 2f), d.overload > 0f ? 0xFFE07030 : 0xFF70B070);
@@ -132,7 +138,7 @@ public final class UniHealth {
                     level(v.bodyTemp < 30f || v.bodyTemp > 41f, v.bodyTemp < 35.5f || v.bodyTemp > 38.5f), time);
             cy += LINE;
         }
-        ecg(g, body, x + PAD, cy, WIDTH - 2 * PAD, exact, time);
+        ecg(g, body, trace, x + PAD, cy, WIDTH - 2 * PAD, exact);
         cy += ECG_H + 4;
 
         if (limb != null) limb(g, font, body, limb, x, cy, exact, time);
@@ -198,24 +204,26 @@ public final class UniHealth {
         return out.toString();
     }
 
-    private static Component lastStandText(Vitals v) {
+    /** Arrow for a temperature heading up or down (°C per minute). */
+    static String trend(float perMinute) {
+        if (perMinute > 0.3f) return "⇑";
+        if (perMinute > 0.05f) return "↑";
+        if (perMinute < -0.3f) return "⇓";
+        if (perMinute < -0.05f) return "↓";
+        return "";
+    }
+
+    public static Component lastStandText(Vitals v) {
         if (v.lastStand > 0f) return lit(Words.duration(v.lastStand));
         return Component.translatable(v.lastStandUsed ? "fleshbone.uni.stand_used" : "fleshbone.uni.stand_ready");
     }
 
-    private static void ecg(GuiGraphicsExtractor g, Body body, int x, int y, int width, boolean exact, float time) {
+    private static void ecg(GuiGraphicsExtractor g, Body body, EcgTrace trace, int x, int y, int width, boolean exact) {
         g.fill(x, y, x + width, y + ECG_H, 0xFF06100A);
-        if (!exact) return;
         Vitals v = body.vitals;
-        int trace = v.cardiacArrest || v.fibrillation > 50f ? 0xFFFF5040 : 0xFF50FF70;
-        int mid = y + ECG_H / 2;
-        int previous = mid;
-        for (int i = 0; i < width; i++) {
-            float t = time - (width - i) * 0.02f;
-            int py = mid - Math.round(VitalsMonitor.wave(v, t) * (ECG_H / 2f - 1));
-            g.fill(x + i, Math.min(previous, py), x + i + 1, Math.max(previous, py) + 1, trace);
-            previous = py;
-        }
+        trace.update(v);
+        if (!exact) return;
+        trace.draw(g, x, y, width, ECG_H, v.cardiacArrest || v.fibrillation > 50f ? 0xFFFF5040 : 0xFF50FF70);
     }
 
     // ------------------------------------------------------------------------------------------------ drawing helpers

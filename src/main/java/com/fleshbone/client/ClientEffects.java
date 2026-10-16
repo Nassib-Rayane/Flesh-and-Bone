@@ -39,6 +39,7 @@ public final class ClientEffects {
         if (v.consciousness < ConsciousnessSystem.CONFUSED) sway += (ConsciousnessSystem.CONFUSED - v.consciousness) / 90f * 7f;
         if (body.part(BodyPart.HEAD).muscle < InjuryApplier.CONCUSSION_MUSCLE) sway += 5f;
         if (v.brainHealth < 80f) sway += (80f - v.brainHealth) / 80f * 6f;
+        sway += Math.min(5f, com.fleshbone.sim.system.ChemistrySystem.relief(body.chem) / 12f);
         float roll = (float) (Math.sin(t * 0.9) * sway + Math.sin(t * 2.3) * sway * 0.3);
 
         float shake = com.fleshbone.client.ClientEpisodes.shake();
@@ -46,6 +47,8 @@ public final class ClientEffects {
         if (pain > 55f) shake += (pain - 55f) / 45f * 0.6f;
         if (v.bodyTemp < 34.5f) shake += Math.min(1.2f, (34.5f - v.bodyTemp) * 0.4f);
         if (body.mind.trauma > 45f) shake += 0.3f;
+        shake += Math.min(0.8f, com.fleshbone.sim.system.ChemistrySystem.withdrawal(body.chem) / 60f);
+        if (body.chem.caffeine > 40f || body.chem.epinephrine > 40f) shake += 0.25f;
         if (v.shock > 30f) shake += v.shock / 100f * 0.5f;
         float jitterYaw = (float) (Math.sin(t * 37.0) * Math.sin(t * 13.0)) * shake;
         float jitterPitch = (float) (Math.sin(t * 41.0 + 1.3) * Math.sin(t * 11.0)) * shake;

@@ -32,6 +32,8 @@ public final class PartState {
     public float bandageSoak;
     public boolean sutured;
     public boolean splinted;
+    /** 1 for a proper splint, less for an improvised one (sticks). */
+    public float splintQuality = 1f;
     public boolean tourniquet;
     /** Seconds since the tourniquet was tightened. */
     public float tourniquetTime;
@@ -70,6 +72,7 @@ public final class PartState {
         shrapnel = 0;
         removeBandage();
         sutured = splinted = tourniquet = amputated = false;
+        splintQuality = 1f;
         tourniquetTime = chilled = 0f;
     }
 
@@ -90,6 +93,7 @@ public final class PartState {
         bandageSoak = v.f("bandage_soak", bandageSoak);
         sutured = v.b("sutured", sutured);
         splinted = v.b("splinted", splinted);
+        splintQuality = v.f("splint_quality", splintQuality);
         tourniquet = v.b("tourniquet", tourniquet);
         tourniquetTime = v.f("tourniquet_time", tourniquetTime);
         chilled = v.f("chilled", chilled);
